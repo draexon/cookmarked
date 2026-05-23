@@ -57,12 +57,13 @@ export default function SaveReelModal() {
     setStep(STEPS.PROCESSING)
 
     try {
-      const selectedCategory = CATEGORIES.find((cat) => cat.id === category)
       const selectedCollection = collections.find((collection) => String(collection.id) === collectionId)
+      const selectedCategory = CATEGORIES.find((cat) => cat.id === category)
+      const effectiveCategory = selectedCollection?.name || selectedCategory?.label || 'Other'
       const payload = {
         url: url.trim(),
         title: title.trim() || null,
-        category: category || null,
+        category: effectiveCategory,
         collection_id: collectionId ? Number(collectionId) : null,
       }
 
@@ -72,8 +73,8 @@ export default function SaveReelModal() {
 
       await saveReel.mutateAsync(payload)
       setSavedMeta({
-        category: selectedCategory?.label || 'Other',
-        collection: selectedCollection?.name || selectedCategory?.label || 'Other',
+        category: effectiveCategory,
+        collection: selectedCollection?.name || 'Other',
       })
       setStep(STEPS.SUCCESS)
 
@@ -179,7 +180,7 @@ export default function SaveReelModal() {
                         onChange={(e) => setCollectionId(e.target.value)}
                         className="input-field text-sm"
                       >
-                        <option value="">Collection</option>
+                        <option value="">{collections.length > 0 ? 'Choose collection' : 'Other'}</option>
                         {collections.map((collection) => (
                           <option key={collection.id} value={collection.id}>{collection.name}</option>
                         ))}

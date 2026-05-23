@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import { Heart, Shuffle } from 'lucide-react'
-import { useFavorites, useToggleFavorite } from '@/hooks/useReels'
+import { useFavorites, useToggleFavorite, useToggleMade } from '@/hooks/useReels'
 import { useUIStore } from '@/store/uiStore'
 import ReelCard from '@/components/cards/ReelCard'
 import { ReelCardSkeleton } from '@/components/loaders/Skeletons'
@@ -10,6 +10,7 @@ import { getRandomItem } from '@/utils'
 export default function Favorites() {
   const { data, isLoading } = useFavorites()
   const toggleFavorite = useToggleFavorite()
+  const toggleMade = useToggleMade()
   const { setRandomReelModal } = useUIStore()
 
   const reels = data || []
@@ -49,6 +50,9 @@ export default function Favorites() {
               reel={reel}
               index={i}
               onFavorite={(id) => toggleFavorite.mutate(id)}
+              onToggleMade={(id) => toggleMade.mutate(id)}
+              favoritePending={toggleFavorite.isPending}
+              madePending={toggleMade.isPending}
             />
           ))}
         </div>

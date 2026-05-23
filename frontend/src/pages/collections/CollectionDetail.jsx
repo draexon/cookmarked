@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ArrowLeft, Shuffle, Share2, Grid3X3, List, Plus, BookMarked } from 'lucide-react'
 import { useCollection } from '@/hooks/useCollections'
-import { useDeleteReel, useToggleFavorite } from '@/hooks/useReels'
+import { useDeleteReel, useToggleFavorite, useToggleMade } from '@/hooks/useReels'
 import { useUIStore } from '@/store/uiStore'
 import ReelCard from '@/components/cards/ReelCard'
 import PlatformBadge from '@/components/ui/PlatformBadge'
@@ -24,6 +24,7 @@ export default function CollectionDetail() {
   const { data, isLoading, error, refetch } = useCollection(id)
   const deleteReel = useDeleteReel(id)
   const toggleFavorite = useToggleFavorite()
+  const toggleMade = useToggleMade()
 
   const collection = data || null
   const reels = collection?.reels || []
@@ -133,6 +134,9 @@ export default function CollectionDetail() {
               index={i}
               onDelete={(rid) => deleteReel.mutate(rid)}
               onFavorite={(rid) => toggleFavorite.mutate(rid)}
+              onToggleMade={(rid) => toggleMade.mutate(rid)}
+              favoritePending={toggleFavorite.isPending}
+              madePending={toggleMade.isPending}
             />
           ))}
         </div>

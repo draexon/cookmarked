@@ -1,15 +1,16 @@
 import { motion } from 'framer-motion'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, TrendingUp, BookMarked, Heart, Shuffle, ChevronRight } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useUIStore } from '@/store/uiStore'
 import { useCollections } from '@/hooks/useCollections'
-import { useFavorites, useRandomReel } from '@/hooks/useReels'
+import { useFavorites, useRandomReel, useToggleFavorite, useToggleMade } from '@/hooks/useReels'
 import { useStats } from '@/hooks/useUser'
 import CollectionCard from '@/components/cards/CollectionCard'
 import ReelCard from '@/components/cards/ReelCard'
 import { CardSkeleton, StatCardSkeleton } from '@/components/loaders/Skeletons'
-import { CATEGORIES } from '@/constants'
+import ShareModal from '@/components/modals/ShareModal'
 import { formatCount } from '@/utils'
 
 const STAT_CONFIGS = [
@@ -25,11 +26,14 @@ export default function Dashboard() {
   const user = useAuthStore((s) => s.user)
   const { setSaveModalOpen, setRandomReelModal } = useUIStore()
   const navigate = useNavigate()
+  const [shareTarget, setShareTarget] = useState(null)
 
   const { data: collectionsData, isLoading: collectionsLoading } = useCollections({ limit: 6 })
   const { data: favoritesData, isLoading: favLoading } = useFavorites()
   const { data: statsData, isLoading: statsLoading } = useStats()
   const randomReel = useRandomReel()
+  const toggleFavorite = useToggleFavorite()
+  const toggleMade = useToggleMade()
 
   const collections = collectionsData || []
   const favorites = favoritesData || []
@@ -48,9 +52,10 @@ export default function Dashboard() {
     }
   }
 
-  const handleCategoryRandom = async (category) => {
+  const handleCollectionRandom = async (collection) => {
     try {
-      const reel = await randomReel.mutateAsync({ category })
+      const params = collection?.id ? { collection_id: collection.id } : { category: 'Other' }
+      const reel = await randomReel.mutateAsync(params)
       setRandomReelModal({ open: true, reel, reels: [] })
     } catch {
       navigate('/collections')
@@ -104,25 +109,25 @@ export default function Dashboard() {
         </div>
       </motion.div>
 
-      {/* Categories */}
+      {/* Collections */}
       <motion.div variants={item}>
         <div className="flex items-center gap-2 mb-4">
           <TrendingUp size={16} className="text-accent-glow" />
-          <h2 className="font-display font-semibold text-text-primary">Categories</h2>
+          <h2 className="font-display font-semibold text-text-primary">Your Collections</h2>
         </div>
         <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-          {CATEGORIES.map((cat, i) => (
+          {(collections.length > 0 ? collections : [{ id: null, name: 'Other', emoji: 'ðŸ“Œ' }]).map((collection, i) => (
             <motion.button
-              key={cat.id}
+              key={collection.id || 'other'}
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: i * 0.04 }}
-              onClick={() => handleCategoryRandom(cat.label)}
+              onClick={() => handleCollectionRandom(collection)}
               className="flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl border border-border bg-bg-surface hover:border-border-strong transition-all text-sm"
-              title={`Random ${cat.label} reel`}
+              title={`Random ${collection.name} reel`}
             >
-              <span>{cat.emoji}</span>
-              <span className="text-text-secondary">{cat.label}</span>
+              <span>{collection.emoji || 'ðŸ“Œ'}</span>
+              <span className="text-text-secondary">{collection.name}</span>
             </motion.button>
           ))}
         </div>
@@ -143,7 +148,7 @@ export default function Dashboard() {
         ) : collections.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {collections.slice(0, 6).map((col, i) => (
-              <CollectionCard key={col.id} collection={col} index={i} />
+              <CollectionCard key={col.id} collection={col} index={i} onShare={setShareTarget} />
             ))}
           </div>
         ) : (
@@ -162,11 +167,20 @@ export default function Dashboard() {
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             {favorites.slice(0, 4).map((reel, i) => (
-              <ReelCard key={reel.id} reel={reel} index={i} />
+              <ReelCard
+                key={reel.id}
+                reel={reel}
+                index={i}
+                onFavorite={(id) => toggleFavorite.mutate(id)}
+                onToggleMade={(id) => toggleMade.mutate(id)}
+                favoritePending={toggleFavorite.isPending}
+                madePending={toggleMade.isPending}
+              />
             ))}
           </div>
         </motion.div>
       )}
+      {shareTarget && <ShareModal collection={shareTarget} onClose={() => setShareTarget(null)} />}
     </motion.div>
   )
 }

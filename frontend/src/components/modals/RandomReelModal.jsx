@@ -53,9 +53,9 @@ export default function RandomReelModal() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ type: 'spring', stiffness: 350, damping: 25 }}
-            className="fixed inset-x-4 bottom-4 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-sm z-50"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
           >
-            <div className="glass-strong rounded-3xl border border-border p-6 shadow-elevated overflow-hidden relative">
+            <div className="glass-strong w-full max-w-sm rounded-3xl border border-border p-6 shadow-elevated overflow-hidden relative pointer-events-auto">
               {/* Glow */}
               <div className="absolute -top-10 -right-10 w-40 h-40 bg-accent-primary/20 rounded-full blur-3xl pointer-events-none" />
 

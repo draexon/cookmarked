@@ -66,6 +66,7 @@ ensureColumn('reels', 'category', 'TEXT');
 ensureColumn('reels', 'note', 'TEXT');
 ensureColumn('reels', 'is_favorite', 'INTEGER DEFAULT 0');
 ensureColumn('reels', 'status', "TEXT DEFAULT 'saved'");
+ensureColumn('reels', 'is_made', 'INTEGER DEFAULT 0');
 
 // Migrate reels table — make category_id nullable
 // SQLite can't ALTER column constraints, so we do a safe table swap
@@ -86,13 +87,14 @@ if (catIdCol && catIdCol.notnull === 1) {
       note        TEXT,
       is_favorite INTEGER DEFAULT 0,
       status      TEXT DEFAULT 'saved',
+      is_made     INTEGER DEFAULT 0,
       created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id)
     );
     INSERT INTO reels_new SELECT
       id, user_id, category_id, collection_id, url,
       title, thumbnail, platform, category, note,
-      is_favorite, status, created_at
+      is_favorite, status, is_made, created_at
     FROM reels;
     DROP TABLE reels;
     ALTER TABLE reels_new RENAME TO reels;

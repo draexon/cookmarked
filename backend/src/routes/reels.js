@@ -18,6 +18,7 @@ function normalizeReel(reel) {
   return {
     ...reel,
     is_favorite: Boolean(reel.is_favorite),
+    is_made: Boolean(reel.is_made),
   };
 }
 
@@ -137,30 +138,36 @@ router.post('/reels', async (req, res, next) => {
     const description = scraped.description || '';
     const thumbnail = scraped.thumbnail || providedThumbnail || null;
 
-    const existingCategories = db.prepare(`
-      SELECT DISTINCT category
-      FROM reels
-      WHERE user_id = ? AND category IS NOT NULL AND category != ''
-    `).all(req.user.id).map((row) => row.category);
+    const existingCollections = db.prepare(`
+      SELECT name
+      FROM collections
+      WHERE user_id = ? AND name IS NOT NULL AND name != ''
+      ORDER BY datetime(created_at) DESC, id DESC
+    `).all(req.user.id).map((row) => row.name);
 
     const inferredCategory = inferCategoryFromText(title, description, providedTitle);
-    let category = inferredCategory || normalizeCategory(providedCategory);
+    let category = normalizeCategory(providedCategory);
     try {
       const aiCategory = normalizeCategory(await categorizeReel({
         title: title || providedTitle || 'Untitled',
         description,
-        existingCategories,
+        thumbnailUrl: thumbnail,
+        existingCollections,
       }));
-      category = inferredCategory || aiCategory || category;
+      category = aiCategory || inferredCategory || category;
     } catch (err) {
       console.warn('[reels] categorization failed; using provided category', { error: err.message });
+      category = inferredCategory || category;
     }
 
     if (collectionId) {
-      const collection = db.prepare('SELECT id FROM collections WHERE id = ? AND user_id = ?')
+      const collection = db.prepare('SELECT id, name FROM collections WHERE id = ? AND user_id = ?')
         .get(collectionId, req.user.id);
       if (!collection) {
         return res.status(404).json({ success: false, message: 'Collection not found' });
+      }
+      if (!providedCategory) {
+        category = collection.name || 'Other';
       }
     } else {
       const collection = getOrCreateCollectionForCategory(req.user.id, category);
@@ -250,10 +257,11 @@ router.get('/reels/random', (req, res, next) => {
 router.get('/reels/favorites', (req, res, next) => {
   try {
     const reels = db.prepare(`
-      SELECT *
-      FROM reels
-      WHERE user_id = ? AND is_favorite = 1
-      ORDER BY datetime(created_at) DESC, id DESC
+      SELECT r.*, c.name AS collection_name
+      FROM reels r
+      LEFT JOIN collections c ON c.id = r.collection_id
+      WHERE r.user_id = ? AND r.is_favorite = 1
+      ORDER BY datetime(r.created_at) DESC, r.id DESC
     `).all(req.user.id).map(normalizeReel);
 
     return ok(res, reels);
@@ -306,6 +314,29 @@ router.patch('/reels/:id/note', (req, res, next) => {
       .run(note, reel.id, req.user.id);
 
     const updated = getReelForUser(reel.id, req.user.id);
+    return ok(res, normalizeReel(updated));
+  } catch (err) {
+    return next(err);
+  }
+});
+
+router.post('/reels/:id/made', (req, res, next) => {
+  try {
+    const reel = getReelForUser(req.params.id, req.user.id);
+    if (!reel) {
+      return res.status(404).json({ success: false, message: 'Reel not found' });
+    }
+
+    const nextMade = reel.is_made ? 0 : 1;
+    db.prepare('UPDATE reels SET is_made = ? WHERE id = ? AND user_id = ?')
+      .run(nextMade, reel.id, req.user.id);
+
+    const updated = db.prepare(`
+      SELECT r.*, c.name AS collection_name
+      FROM reels r
+      LEFT JOIN collections c ON c.id = r.collection_id
+      WHERE r.id = ? AND r.user_id = ?
+    `).get(reel.id, req.user.id);
     return ok(res, normalizeReel(updated));
   } catch (err) {
     return next(err);

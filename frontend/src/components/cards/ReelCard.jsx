@@ -1,16 +1,36 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { ExternalLink, Heart, Trash2, Copy, MoreVertical } from 'lucide-react'
+import { CheckCircle2, Circle, ExternalLink, Heart, Trash2, Copy, MoreVertical } from 'lucide-react'
 import PlatformBadge from '@/components/ui/PlatformBadge'
 import { CATEGORIES } from '@/constants'
 import { timeAgo, truncate, getPlatformThumbnail } from '@/utils'
 import { cn } from '@/utils'
 
-export default function ReelCard({ reel, onDelete, onFavorite, index = 0 }) {
+export default function ReelCard({
+  reel,
+  onDelete,
+  onFavorite,
+  onToggleMade,
+  favoritePending = false,
+  madePending = false,
+  index = 0,
+}) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [imgError, setImgError] = useState(false)
 
-  const category = CATEGORIES.find((c) => c.id === reel?.category)
+  const categoryName = reel?.collection_name || reel?.category
+  const category = CATEGORIES.find((c) =>
+    c.id === String(categoryName || '').toLowerCase() ||
+    c.label.toLowerCase() === String(categoryName || '').toLowerCase()
+  )
+  const categoryBadge = categoryName
+    ? {
+        emoji: category?.emoji || 'ðŸ“Œ',
+        label: category?.label || categoryName,
+        color: category?.color || '#6b7280',
+      }
+    : null
+  const isFoodReel = String(categoryName || '').toLowerCase().includes('food')
   const thumbnail = !imgError && reel?.thumbnail
     ? reel.thumbnail
     : getPlatformThumbnail(reel?.platform)
@@ -54,12 +74,12 @@ export default function ReelCard({ reel, onDelete, onFavorite, index = 0 }) {
         </div>
 
         {/* Category */}
-        {category && (
+        {categoryBadge && (
           <div
             className="absolute top-2.5 right-2.5 text-xs px-2 py-0.5 rounded-full font-medium"
-            style={{ background: category.color + '25', color: category.color, border: `1px solid ${category.color}40` }}
+            style={{ background: categoryBadge.color + '25', color: categoryBadge.color, border: `1px solid ${categoryBadge.color}40` }}
           >
-            {category.emoji} {category.label}
+            {categoryBadge.emoji} {categoryBadge.label}
           </div>
         )}
 
@@ -83,8 +103,9 @@ export default function ReelCard({ reel, onDelete, onFavorite, index = 0 }) {
           <div className="flex gap-1">
             <button
               onClick={() => onFavorite?.(reel.id)}
+              disabled={!onFavorite || favoritePending}
               className={cn(
-                'p-1.5 rounded-lg transition-all',
+                'p-1.5 rounded-lg transition-all disabled:cursor-not-allowed disabled:opacity-60',
                 reel?.is_favorite
                   ? 'text-red-400 bg-red-500/10'
                   : 'text-text-muted hover:text-red-400 hover:bg-red-500/10'
@@ -100,6 +121,23 @@ export default function ReelCard({ reel, onDelete, onFavorite, index = 0 }) {
             >
               <Copy size={13} />
             </button>
+            {isFoodReel && onToggleMade && (
+              <button
+                onClick={() => onToggleMade?.(reel.id)}
+                disabled={madePending}
+                className={cn(
+                  'flex items-center gap-1 p-1.5 rounded-lg text-xs transition-all disabled:cursor-not-allowed disabled:opacity-60',
+                  reel?.is_made
+                    ? 'text-green-400 bg-green-500/10'
+                    : 'text-text-muted hover:text-green-400 hover:bg-green-500/10'
+                )}
+                aria-label={reel?.is_made ? 'Mark not made yet' : 'Mark made'}
+                title={reel?.is_made ? 'Made' : 'Not made yet'}
+              >
+                {reel?.is_made ? <CheckCircle2 size={13} /> : <Circle size={13} />}
+                <span className="hidden sm:inline">{reel?.is_made ? 'Made' : 'To make'}</span>
+              </button>
+            )}
           </div>
 
           {onDelete && (

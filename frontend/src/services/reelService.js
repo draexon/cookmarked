@@ -17,6 +17,11 @@ export const reelService = {
     return unwrapApiData(data)
   },
 
+  toggleMade: async (id) => {
+    const { data } = await api.post(`/reels/${id}/made`)
+    return unwrapApiData(data)
+  },
+
   updateNote: async (id, note) => {
     const { data } = await api.patch(`/reels/${id}/note`, { note })
     return unwrapApiData(data)

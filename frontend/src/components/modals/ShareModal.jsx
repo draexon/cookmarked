@@ -29,10 +29,10 @@ export default function ShareModal({ collection, onClose }) {
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95 }}
         transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-        className="fixed inset-x-4 bottom-4 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-sm z-50"
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="glass-strong rounded-2xl border border-border p-6 shadow-elevated">
+        <div className="glass-strong w-full max-w-sm rounded-2xl border border-border p-6 shadow-elevated pointer-events-auto">
           <div className="flex items-center justify-between mb-5">
             <div>
               <h2 className="font-display font-semibold text-text-primary">Share Collection</h2>

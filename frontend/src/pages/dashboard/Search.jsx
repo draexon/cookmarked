@@ -2,18 +2,23 @@ import { useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Search, X, Clock, TrendingUp } from 'lucide-react'
 import { useSearch } from '@/hooks/useSearch'
+import { useToggleFavorite, useToggleMade } from '@/hooks/useReels'
+import { useCollections } from '@/hooks/useCollections'
 import ReelCard from '@/components/cards/ReelCard'
 import CollectionCard from '@/components/cards/CollectionCard'
 import { ReelCardSkeleton, CardSkeleton } from '@/components/loaders/Skeletons'
-import { CATEGORIES } from '@/constants'
 import { useNavigate } from 'react-router-dom'
 
 const TRENDING = ['pasta recipes', 'morning workout', 'Tokyo travel', 'car reviews', 'guitar lesson']
 
 export default function SearchPage() {
   const { query, setQuery, debouncedQuery, results, recentSearches, addRecentSearch, clearRecentSearches } = useSearch()
+  const toggleFavorite = useToggleFavorite()
+  const toggleMade = useToggleMade()
+  const { data: collectionsData } = useCollections()
   const inputRef = useRef(null)
   const navigate = useNavigate()
+  const collections = collectionsData || []
 
   useEffect(() => { inputRef.current?.focus() }, [])
 
@@ -83,14 +88,14 @@ export default function SearchPage() {
               </div>
             </div>
 
-            {/* Categories */}
+            {/* Collections */}
             <div>
-              <p className="text-sm font-medium text-text-secondary mb-3">Browse Categories</p>
+              <p className="text-sm font-medium text-text-secondary mb-3">Browse Collections</p>
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                {CATEGORIES.map((cat) => (
-                  <button key={cat.id} onClick={() => navigate('/collections')} className="p-3 rounded-xl border border-border bg-bg-surface hover:border-border-strong transition-all text-center">
-                    <div className="text-2xl mb-1">{cat.emoji}</div>
-                    <div className="text-xs text-text-secondary">{cat.label}</div>
+                {(collections.length > 0 ? collections : [{ id: 'other', name: 'Other', emoji: 'ðŸ“Œ' }]).map((collection) => (
+                  <button key={collection.id} onClick={() => navigate(collection.id === 'other' ? '/collections' : `/collections/${collection.id}`)} className="p-3 rounded-xl border border-border bg-bg-surface hover:border-border-strong transition-all text-center">
+                    <div className="text-2xl mb-1">{collection.emoji || 'ðŸ“Œ'}</div>
+                    <div className="text-xs text-text-secondary truncate">{collection.name}</div>
                   </button>
                 ))}
               </div>
@@ -128,7 +133,17 @@ export default function SearchPage() {
                   <div>
                     <h3 className="text-sm font-medium text-text-secondary mb-3">Reels</h3>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                      {data.reels.map((reel, i) => <ReelCard key={reel.id} reel={reel} index={i} />)}
+                      {data.reels.map((reel, i) => (
+                        <ReelCard
+                          key={reel.id}
+                          reel={reel}
+                          index={i}
+                          onFavorite={(id) => toggleFavorite.mutate(id)}
+                          onToggleMade={(id) => toggleMade.mutate(id)}
+                          favoritePending={toggleFavorite.isPending}
+                          madePending={toggleMade.isPending}
+                        />
+                      ))}
                     </div>
                   </div>
                 )}

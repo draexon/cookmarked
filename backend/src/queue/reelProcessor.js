@@ -21,7 +21,12 @@ const worker = new Worker(
     const existingCats = db.getUserCategories(user.id).map((c) => c.name);
 
     // 4 — Ask Gemini for category
-    const categoryName = await categorizeReel({ title, description, existingCategories: existingCats });
+    const categoryName = await categorizeReel({
+      title,
+      description,
+      thumbnailUrl: thumbnail,
+      existingCategories: existingCats,
+    });
 
     // 5 — Find or create category
     const category = db.findOrCreateCategory(user.id, categoryName);

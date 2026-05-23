@@ -61,6 +61,7 @@ function normalizeReel(reel) {
   return {
     ...reel,
     is_favorite: toBool(reel.is_favorite),
+    is_made: toBool(reel.is_made),
   };
 }
 
@@ -70,10 +71,11 @@ function getCollectionForUser(id, userId) {
 
 function getReelsForCollection(collectionId) {
   return db.prepare(`
-    SELECT *
-    FROM reels
-    WHERE collection_id = ?
-    ORDER BY datetime(created_at) DESC, id DESC
+    SELECT r.*, c.name AS collection_name
+    FROM reels r
+    LEFT JOIN collections c ON c.id = r.collection_id
+    WHERE r.collection_id = ?
+    ORDER BY datetime(r.created_at) DESC, r.id DESC
   `).all(collectionId).map(normalizeReel);
 }
 

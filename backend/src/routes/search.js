@@ -21,6 +21,7 @@ function normalizeReel(reel) {
   return {
     ...reel,
     is_favorite: Boolean(reel.is_favorite),
+    is_made: Boolean(reel.is_made),
   };
 }
 
@@ -35,12 +36,13 @@ router.get('/search', (req, res, next) => {
     const pattern = `%${query}%`;
 
     const reels = db.prepare(`
-      SELECT *
-      FROM reels
-      WHERE user_id = ?
-        AND (title LIKE ? OR category LIKE ?)
-      ORDER BY datetime(created_at) DESC, id DESC
-    `).all(req.user.id, pattern, pattern).map(normalizeReel);
+      SELECT r.*, c.name AS collection_name
+      FROM reels r
+      LEFT JOIN collections c ON c.id = r.collection_id
+      WHERE r.user_id = ?
+        AND (r.title LIKE ? OR r.category LIKE ? OR c.name LIKE ?)
+      ORDER BY datetime(r.created_at) DESC, r.id DESC
+    `).all(req.user.id, pattern, pattern, pattern).map(normalizeReel);
 
     const collections = db.prepare(`
       SELECT *
