@@ -7,19 +7,20 @@ import { useDeleteReel, useToggleFavorite, useToggleMade } from '@/hooks/useReel
 import { useUIStore } from '@/store/uiStore'
 import ReelCard from '@/components/cards/ReelCard'
 import PlatformBadge from '@/components/ui/PlatformBadge'
+import PlatformFilter from '@/components/ui/PlatformFilter'
 import { ReelCardSkeleton } from '@/components/loaders/Skeletons'
 import EmptyState from '@/components/ui/EmptyState'
 import ErrorState from '@/components/ui/ErrorState'
 import ShareModal from '@/components/modals/ShareModal'
 import { CATEGORIES } from '@/constants'
-import { getRandomItem } from '@/utils'
+import { detectPlatform, getRandomItem } from '@/utils'
 
 export default function CollectionDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [viewMode, setViewMode] = useState('grid')
   const [shareOpen, setShareOpen] = useState(false)
-  const { setRandomReelModal, setSaveModalOpen } = useUIStore()
+  const { activeFilters, setRandomReelModal, setSaveModalOpen } = useUIStore()
 
   const { data, isLoading, error, refetch } = useCollection(id)
   const deleteReel = useDeleteReel(id)
@@ -28,11 +29,15 @@ export default function CollectionDetail() {
 
   const collection = data || null
   const reels = collection?.reels || []
+  const selectedPlatform = activeFilters.platforms[0] || ''
+  const visibleReels = selectedPlatform
+    ? reels.filter((reel) => (reel.platform || detectPlatform(reel.url)) === selectedPlatform)
+    : reels
   const category = CATEGORIES.find((c) => c.id === collection?.category)
 
   const handleRandomReel = () => {
-    if (!reels.length) return
-    const scopedReels = reels.map((reel) => ({ ...reel, collection_name: collection.name }))
+    if (!visibleReels.length) return
+    const scopedReels = visibleReels.map((reel) => ({ ...reel, collection_name: collection.name }))
     const reel = getRandomItem(scopedReels)
     setRandomReelModal({ open: true, reel, reels: scopedReels })
   }
@@ -100,8 +105,12 @@ export default function CollectionDetail() {
       </motion.div>
 
       {/* Controls */}
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-text-muted">{reels.length} reels</p>
+      <div className="space-y-3">
+        <PlatformFilter />
+        <div className="flex items-center justify-between">
+        <p className="text-sm text-text-muted">
+          {visibleReels.length} {selectedPlatform ? `${selectedPlatform} ` : ''}reels
+        </p>
         <div className="flex items-center gap-2">
           <button onClick={() => setSaveModalOpen(true)} className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-accent-glow transition-colors">
             <Plus size={14} /> Add
@@ -115,19 +124,20 @@ export default function CollectionDetail() {
             </button>
           </div>
         </div>
+        </div>
       </div>
 
       {/* Reels */}
-      {reels.length === 0 ? (
+      {visibleReels.length === 0 ? (
         <EmptyState
           icon={BookMarked}
-          title="No reels yet"
-          description="Start saving reels to this collection."
+          title={selectedPlatform ? `No ${selectedPlatform} reels yet` : 'No reels yet'}
+          description={selectedPlatform ? 'Choose another platform or save a matching reel.' : 'Start saving reels to this collection.'}
           action={<button onClick={() => setSaveModalOpen(true)} className="btn-primary flex items-center gap-2 text-sm"><Plus size={14} /> Save a Reel</button>}
         />
       ) : (
         <div className={viewMode === 'grid' ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3' : 'space-y-3'}>
-          {reels.map((reel, i) => (
+          {visibleReels.map((reel, i) => (
             <ReelCard
               key={reel.id}
               reel={reel}

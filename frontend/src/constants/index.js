@@ -19,10 +19,10 @@ export const CATEGORIES = [
 ]
 
 export const PLATFORMS = {
-  instagram: { id: 'instagram', label: 'Instagram', color: '#e1306c' },
-  tiktok:    { id: 'tiktok',    label: 'TikTok',    color: '#69c9d0' },
-  youtube:   { id: 'youtube',   label: 'YouTube',   color: '#ff0000' },
-  facebook:  { id: 'facebook',  label: 'Facebook',  color: '#1877f2' },
+  instagram: { id: 'instagram', label: 'Instagram', color: '#e1306c', domains: ['instagram.com'] },
+  tiktok:    { id: 'tiktok',    label: 'TikTok',    color: '#69c9d0', domains: ['tiktok.com', 'vm.tiktok.com'] },
+  youtube:   { id: 'youtube',   label: 'YouTube',   color: '#ff0000', domains: ['youtube.com', 'youtu.be'] },
+  facebook:  { id: 'facebook',  label: 'Facebook',  color: '#1877f2', domains: ['facebook.com', 'fb.watch'] },
 }
 
 export const SORT_OPTIONS = [

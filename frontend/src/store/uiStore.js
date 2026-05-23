@@ -11,6 +11,13 @@ export const useUIStore = create((set) => ({
   setSaveModalOpen: (open) => set({ saveModalOpen: open }),
   setRandomReelModal: (state) => set((s) => ({ randomReelModal: { ...s.randomReelModal, ...state } })),
   setViewMode: (mode) => set({ viewMode: mode }),
+  setPlatformFilter: (platform) =>
+    set((s) => ({
+      activeFilters: {
+        ...s.activeFilters,
+        platforms: platform ? [platform] : [],
+      },
+    })),
 
   setFilter: (type, value) =>
     set((s) => {

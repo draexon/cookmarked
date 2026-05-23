@@ -15,19 +15,32 @@ function TikTokIcon({ size = 14 }) {
 const ICONS = { instagram: Instagram, tiktok: TikTokIcon, youtube: Youtube, facebook: Facebook }
 
 export default function PlatformFilter({ className }) {
-  const { activeFilters, setFilter } = useUIStore()
+  const { activeFilters, setPlatformFilter } = useUIStore()
   const activePlatforms = activeFilters.platforms
+  const activePlatform = activePlatforms[0] || ''
 
   return (
     <div className={cn('flex gap-2 flex-wrap', className)}>
+      <motion.button
+        onClick={() => setPlatformFilter(null)}
+        whileTap={{ scale: 0.95 }}
+        className={cn(
+          'flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-medium transition-all duration-200 border',
+          !activePlatform
+            ? 'border-accent-border bg-accent-soft text-accent-glow'
+            : 'border-border text-text-muted hover:border-border-strong hover:text-text-secondary'
+        )}
+      >
+        All
+      </motion.button>
       {Object.values(PLATFORMS).map((platform) => {
-        const isActive = activePlatforms.includes(platform.id)
+        const isActive = activePlatform === platform.id
         const Icon = ICONS[platform.id]
 
         return (
           <motion.button
             key={platform.id}
-            onClick={() => setFilter('platforms', platform.id)}
+            onClick={() => setPlatformFilter(isActive ? null : platform.id)}
             whileTap={{ scale: 0.95 }}
             className={cn(
               'flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-medium transition-all duration-200 border',

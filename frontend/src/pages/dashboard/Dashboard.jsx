@@ -24,7 +24,7 @@ const item = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transiti
 
 export default function Dashboard() {
   const user = useAuthStore((s) => s.user)
-  const { setSaveModalOpen, setRandomReelModal } = useUIStore()
+  const { activeFilters, setSaveModalOpen, setRandomReelModal } = useUIStore()
   const navigate = useNavigate()
   const [shareTarget, setShareTarget] = useState(null)
 
@@ -45,7 +45,9 @@ export default function Dashboard() {
 
   const handleRandomReel = async () => {
     try {
-      const reel = await randomReel.mutateAsync()
+      const reel = await randomReel.mutateAsync({
+        platform: activeFilters.platforms[0] || undefined,
+      })
       setRandomReelModal({ open: true, reel, reels: [] })
     } catch {
       setRandomReelModal({ open: false, reel: null, reels: [] })
@@ -55,6 +57,9 @@ export default function Dashboard() {
   const handleCollectionRandom = async (collection) => {
     try {
       const params = collection?.id ? { collection_id: collection.id } : { category: 'Other' }
+      if (activeFilters.platforms[0]) {
+        params.platform = activeFilters.platforms[0]
+      }
       const reel = await randomReel.mutateAsync(params)
       setRandomReelModal({ open: true, reel, reels: [] })
     } catch {

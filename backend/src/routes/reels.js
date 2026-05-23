@@ -3,6 +3,7 @@ const authenticateToken = require('../middleware/authenticateToken');
 const { db } = require('../db/database');
 const { scrapeMetadata } = require('../services/metadataScraper');
 const { categorizeReel } = require('../services/geminiService');
+const { detectPlatform } = require('../services/urlExtractor');
 
 const router = express.Router();
 
@@ -137,6 +138,7 @@ router.post('/reels', async (req, res, next) => {
       : providedTitle || null;
     const description = scraped.description || '';
     const thumbnail = scraped.thumbnail || providedThumbnail || null;
+    const platform = detectPlatform(url);
 
     const existingCollections = db.prepare(`
       SELECT name
@@ -180,6 +182,7 @@ router.post('/reels', async (req, res, next) => {
       'url',
       'title',
       'thumbnail',
+      'platform',
       'category',
       'note',
       'is_favorite',
@@ -192,6 +195,7 @@ router.post('/reels', async (req, res, next) => {
       url,
       title,
       thumbnail,
+      platform,
       category,
       note,
       0,
@@ -221,6 +225,7 @@ router.get('/reels/random', (req, res, next) => {
   try {
     const category = normalizeCategoryFilter(req.query.category);
     const collectionId = req.query.collection_id == null ? null : String(req.query.collection_id).trim();
+    const platform = req.query.platform == null ? null : String(req.query.platform).trim().toLowerCase();
 
     const conditions = ['r.user_id = ?'];
     const params = [req.user.id];
@@ -233,6 +238,11 @@ router.get('/reels/random', (req, res, next) => {
     if (collectionId) {
       conditions.push('r.collection_id = ?');
       params.push(collectionId);
+    }
+
+    if (platform) {
+      conditions.push('LOWER(r.platform) = LOWER(?)');
+      params.push(platform);
     }
 
     const reel = db.prepare(`

@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { CheckCircle2, Circle, ExternalLink, Heart, Trash2, Copy, MoreVertical } from 'lucide-react'
 import PlatformBadge from '@/components/ui/PlatformBadge'
 import { CATEGORIES } from '@/constants'
-import { timeAgo, truncate, getPlatformThumbnail } from '@/utils'
+import { detectPlatform, timeAgo, truncate, getPlatformThumbnail } from '@/utils'
 import { cn } from '@/utils'
 
 export default function ReelCard({
@@ -17,6 +17,7 @@ export default function ReelCard({
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [imgError, setImgError] = useState(false)
+  const platform = reel?.platform || detectPlatform(reel?.url)
 
   const categoryName = reel?.collection_name || reel?.category
   const category = CATEGORIES.find((c) =>
@@ -33,7 +34,7 @@ export default function ReelCard({
   const isFoodReel = String(categoryName || '').toLowerCase().includes('food')
   const thumbnail = !imgError && reel?.thumbnail
     ? reel.thumbnail
-    : getPlatformThumbnail(reel?.platform)
+    : getPlatformThumbnail(platform)
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(reel.url)
@@ -70,7 +71,7 @@ export default function ReelCard({
 
         {/* Platform badge */}
         <div className="absolute top-2.5 left-2.5">
-          <PlatformBadge platform={reel?.platform} size="sm" />
+          <PlatformBadge platform={platform} size="sm" />
         </div>
 
         {/* Category */}

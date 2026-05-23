@@ -1,10 +1,10 @@
 const URL_REGEX = /https?:\/\/[^\s]+/gi;
 
 const PLATFORM_PATTERNS = {
-  instagram: /instagram\.com\/(reel|p|tv)\//i,
-  youtube: /youtube\.com\/shorts\/|youtu\.be\//i,
+  instagram: /instagram\.com\/(reel|reels|p|tv)\//i,
+  youtube: /youtube\.com\/(shorts\/|watch\?)|youtu\.be\//i,
   facebook: /facebook\.com\/(reel|watch|video)/i,
-  tiktok: /tiktok\.com\/@.+\/video\//i,
+  tiktok: /tiktok\.com\/@.+\/video\/|vm\.tiktok\.com\//i,
 };
 
 function extractUrl(message) {
