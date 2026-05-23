@@ -10,6 +10,7 @@ export default function CollectionCard({ collection, index = 0, onShare }) {
   const category = CATEGORIES.find((c) => c.id === collection?.category)
   const platforms = collection?.platforms || []
   const coverImage = collection?.cover_image || getPlatformThumbnail(platforms[0])
+  const activityTime = collection?.updated_at || collection?.created_at
 
   return (
     <motion.div
@@ -76,7 +77,7 @@ export default function CollectionCard({ collection, index = 0, onShare }) {
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-xs text-text-muted">{timeAgo(collection?.updated_at || Date.now())}</span>
+          <span className="text-xs text-text-muted">{activityTime ? timeAgo(activityTime) : ''}</span>
           <button
             onClick={(e) => { e.stopPropagation(); onShare?.(collection) }}
             className="p-1 rounded-lg text-text-muted hover:text-accent-glow hover:bg-accent-soft transition-all opacity-0 group-hover:opacity-100"

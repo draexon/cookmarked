@@ -37,11 +37,26 @@ function getCollectionMeta(collectionId) {
     ORDER BY datetime(created_at) DESC, id DESC
     LIMIT 1
   `).get(collectionId);
+  const latestReel = db.prepare(`
+    SELECT created_at
+    FROM reels
+    WHERE collection_id = ?
+    ORDER BY datetime(created_at) DESC, id DESC
+    LIMIT 1
+  `).get(collectionId);
+  const collection = db.prepare('SELECT created_at, last_opened_at FROM collections WHERE id = ?')
+    .get(collectionId);
+  const activityDates = [
+    latestReel?.created_at,
+    collection?.last_opened_at,
+    collection?.created_at,
+  ].filter(Boolean);
 
   return {
     reel_count: reelCount,
     platforms,
     cover_image: cover?.thumbnail || null,
+    updated_at: activityDates.sort((a, b) => new Date(b) - new Date(a))[0] || null,
   };
 }
 
@@ -112,8 +127,12 @@ router.get('/collections/:id', authenticateToken, (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Collection not found' });
     }
 
+    db.prepare('UPDATE collections SET last_opened_at = ? WHERE id = ? AND user_id = ?')
+      .run(new Date().toISOString(), collection.id, req.user.id);
+    const updatedCollection = getCollectionForUser(collection.id, req.user.id);
+
     return ok(res, {
-      ...normalizeCollectionWithMeta(collection),
+      ...normalizeCollectionWithMeta(updatedCollection),
       reels: getReelsForCollection(collection.id),
     });
   } catch (err) {

@@ -31,6 +31,7 @@ db.exec(`
     emoji TEXT,
     is_favorite INTEGER DEFAULT 0,
     share_token TEXT UNIQUE,
+    last_opened_at DATETIME,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id)
   );
@@ -60,6 +61,8 @@ ensureColumn('users', 'email', 'TEXT');
 ensureColumn('users', 'password_hash', 'TEXT');
 ensureColumn('users', 'avatar_url', 'TEXT');
 db.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email)').run();
+
+ensureColumn('collections', 'last_opened_at', 'DATETIME');
 
 ensureColumn('reels', 'collection_id', 'INTEGER');
 ensureColumn('reels', 'category', 'TEXT');
