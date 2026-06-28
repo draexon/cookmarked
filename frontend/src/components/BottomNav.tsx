@@ -16,7 +16,7 @@ export default function BottomNav({ activeTab, setActiveTab, onAddClick }: Botto
   ] as const;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-brand-outline-variant/30 py-2 pb-5 px-4 z-40 shadow-[0_-4px_16px_rgba(28,27,27,0.03)] selection:bg-transparent lg:hidden">
+    <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-brand-outline-variant/30 py-2 pb-5 px-4 z-40 shadow-[0_-4px_16px_rgba(28,27,27,0.03)] selection:bg-transparent md:hidden">
       <div className="max-w-md mx-auto flex items-center justify-between relative">
         {tabs.map((tab) => {
           if (tab.id === 'spacer') {

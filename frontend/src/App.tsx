@@ -59,7 +59,7 @@ function DesktopSidebar({
   ] as const;
 
   return (
-    <aside className="hidden lg:flex fixed left-0 top-0 bottom-0 z-40 w-64 bg-white/90 backdrop-blur-md border-r border-brand-outline-variant/20 px-4 py-6 flex-col selection:bg-transparent">
+    <aside className="hidden md:flex fixed left-0 top-0 bottom-0 z-40 w-64 bg-white/90 backdrop-blur-md border-r border-brand-outline-variant/20 px-4 py-6 flex-col selection:bg-transparent">
       <button
         onClick={() => setActiveTab('feed')}
         className="text-left px-3 pb-6 focus:outline-none cursor-pointer"
@@ -384,7 +384,7 @@ export default function App() {
     : reels.filter((reel) => reel.collectionId === feedCollectionId);
 
   return (
-    <div className="min-h-screen bg-[#FAFAF8] selection:bg-primary-orange/20 selection:text-primary pb-24 lg:pb-0">
+    <div className="min-h-screen max-w-full overflow-x-hidden bg-[#FAFAF8] selection:bg-primary-orange/20 selection:text-primary pb-24 md:pb-0">
       <DesktopSidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -395,7 +395,7 @@ export default function App() {
       />
       
       {/* Container simulating a refined viewport card canvas */}
-      <div className="bg-app-bg w-full min-h-screen relative flex flex-col md:max-w-5xl md:mx-auto lg:max-w-none lg:ml-64 lg:shadow-none lg:border-x-0 shadow-2xl border-x border-[#eae7e7]/40">
+      <div className="bg-app-bg w-full max-w-full min-h-screen relative flex flex-col md:w-[calc(100%-16rem)] md:ml-64 shadow-none border-x-0">
         {apiError && (
           <div className="m-4 mb-0 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700" role="alert">
             {apiError}
@@ -451,7 +451,7 @@ export default function App() {
               </div>
 
               {/* Layout Small Stats Counters Container */}
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div 
                   onClick={() => setActiveTab('favorites')}
                   className="bg-white py-4 px-2 rounded-2xl border border-brand-outline-variant/10 text-center shadow-sm hover:shadow-md hover:border-primary-orange/40 active:scale-95 transition-all duration-200 ease-in-out cursor-pointer"
@@ -818,7 +818,7 @@ export default function App() {
                       All Collections
                     </h3>
 
-                    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3.5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3.5">
                       {collections
                         .filter(c => !c.isFeatured)
                         .filter(c => {
@@ -967,7 +967,7 @@ export default function App() {
                   </header>
 
                   {/* Main scrolling viewport content */}
-                  <main className="p-5 md:p-8 lg:p-10 space-y-5 flex-1 overflow-y-auto no-scrollbar pb-24 lg:pb-8">
+                  <main className="p-5 md:p-8 lg:p-10 space-y-5 flex-1 overflow-y-auto no-scrollbar pb-24 md:pb-8">
                     {/* Collection metadata cards panel description */}
                     <div className="space-y-2">
                       <div className="flex items-center gap-2.5">
@@ -1081,7 +1081,7 @@ export default function App() {
 
                         {/* OTHER SECONDARY TILES SYSTEM OF THE ADJOINED GRID */}
                         {otherReels.length > 0 && (
-                          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 pb-8">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 pb-8">
                             {otherReels.map((reel) => (
                               <div
                                 key={reel.id}
@@ -1549,7 +1549,7 @@ export default function App() {
             </header>
 
             {/* Notification List Panel */}
-            <main className="p-5 md:p-8 lg:p-10 space-y-4 flex-1 overflow-y-auto no-scrollbar pb-24 lg:pb-8">
+            <main className="p-5 md:p-8 lg:p-10 space-y-4 flex-1 overflow-y-auto no-scrollbar pb-24 md:pb-8">
               {/* Filters toolbar inside notifications */}
               <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 selection:bg-transparent">
                 {[
