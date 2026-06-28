@@ -1,8 +1,6 @@
 import { API_BASE } from './config';
 import type { Collection, Platform, Reel, UserProfile } from '../types';
 
-const TOKEN_KEY = 'cookmarked_access_token';
-const REFRESH_TOKEN_KEY = 'cookmarked_refresh_token';
 const BACKEND_BASE = API_BASE.replace(/\/api$/, '');
 
 type JsonRecord = Record<string, unknown>;
@@ -51,37 +49,19 @@ interface AuthResponse {
   user: BackendUser;
 }
 
-function getToken() {
-  return localStorage.getItem(TOKEN_KEY);
-}
-
-export function hasAuthToken() {
-  return Boolean(getToken());
-}
-
-export function clearAuthToken() {
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(REFRESH_TOKEN_KEY);
-}
-
-export function completeOAuthLogin(accessToken: string, refreshToken: string) {
-  localStorage.setItem(TOKEN_KEY, accessToken);
-  localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
-}
-
-function storeTokens(auth: AuthResponse) {
-  completeOAuthLogin(auth.access_token, auth.refresh_token);
+async function getToken() {
+  return (window as any).Clerk?.session?.getToken() || null;
 }
 
 async function request<T>(path: string, options: RequestInit = {}, auth = true): Promise<T> {
   try {
-    const token = getToken();
     const headers = new Headers(options.headers);
     if (options.body && !(options.body instanceof FormData)) {
       headers.set('Content-Type', 'application/json');
     }
-    if (auth && token) {
-      headers.set('Authorization', `Bearer ${token}`);
+    if (auth) {
+      const token = await getToken();
+      if (token) headers.set('Authorization', `Bearer ${token}`);
     }
 
     const response = await fetch(`${API_BASE}${path}`, { ...options, headers });
@@ -145,51 +125,7 @@ export async function healthCheck() {
   return request<{ ok: boolean; service: string }>('/health', {}, false);
 }
 
-export async function login(email: string, password: string) {
-  const auth = await request<AuthResponse>('/auth/login', {
-    method: 'POST',
-    body: JSON.stringify({ email, password }),
-  }, false);
-  storeTokens(auth);
-  return auth.user;
-}
 
-export async function register(name: string, email: string, password: string) {
-  const auth = await request<AuthResponse>('/auth/register', {
-    method: 'POST',
-    body: JSON.stringify({ name, email, password }),
-  }, false);
-  storeTokens(auth);
-  return auth.user;
-}
-
-export async function getCurrentUser() {
-  return request<BackendUser>('/auth/me');
-}
-
-export async function refreshAccessToken() {
-  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
-  const result = await request<{ access_token: string }>('/auth/refresh', {
-    method: 'POST',
-    body: JSON.stringify({ refresh_token: refreshToken }),
-  }, false);
-  localStorage.setItem(TOKEN_KEY, result.access_token);
-  return result.access_token;
-}
-
-export function forgotPassword(email: string) {
-  return request<{ message: string }>('/auth/forgot-password', {
-    method: 'POST',
-    body: JSON.stringify({ email }),
-  }, false);
-}
-
-export function resetPassword(token: string, password: string) {
-  return request<{ message: string }>('/auth/reset-password', {
-    method: 'POST',
-    body: JSON.stringify({ token, password }),
-  }, false);
-}
 
 export function getCollections() {
   return request<ApiEnvelope<BackendCollection[]>>('/collections').then((result) => result.data.map(mapCollection));
@@ -307,11 +243,15 @@ export function getUserStats() {
 }
 
 export async function getProfile(): Promise<UserProfile> {
-  const [user, stats] = await Promise.all([getCurrentUser(), getUserStats()]);
+  const stats = await getUserStats();
+  
+  // We extract current user details directly from Clerk
+  const clerkUser = (window as any).Clerk?.user;
+  
   return {
-    name: user.name,
-    email: user.email,
-    avatarUrl: user.avatar_url ? `${BACKEND_BASE}${user.avatar_url}` : '',
+    name: clerkUser?.fullName || clerkUser?.firstName || 'User',
+    email: clerkUser?.primaryEmailAddress?.emailAddress || '',
+    avatarUrl: clerkUser?.imageUrl || '',
     totalReels: stats.total_reels,
     totalCollections: stats.total_collections,
     totalFavorites: stats.total_favorites,

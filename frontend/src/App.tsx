@@ -15,20 +15,16 @@ import {
   INITIAL_NOTIFICATIONS
 } from './data';
 import {
-  clearAuthToken,
-  completeOAuthLogin,
   createCollection,
   getLibrary,
   getProfile,
   getRandomReel,
-  hasAuthToken,
   toggleReelFavorite,
   updateCollection,
-  updatePassword,
   deleteReel,
 } from './api/reelService';
 
-import AuthScreen from './components/AuthScreen';
+import { useAuth, SignedIn, SignedOut, SignIn, UserButton } from '@clerk/clerk-react';
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
 import SaveReelModal from './components/SaveReelModal';
@@ -158,10 +154,10 @@ function ExpandableCaption({
 }
 
 export default function App() {
-  const isOAuthCallback = window.location.pathname === '/auth/callback';
+  const { isLoaded, isSignedIn } = useAuth();
   // Login Session
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(hasAuthToken() || isOAuthCallback);
+  const [isLoading, setIsLoading] = useState(true);
   const [apiError, setApiError] = useState('');
 
   // Active Navigation Tab
@@ -259,7 +255,6 @@ export default function App() {
       setReels(library.reels);
     } catch (err) {
       setApiError(err instanceof Error ? err.message : 'Unable to load your library.');
-      clearAuthToken();
       setCurrentUser(null);
     } finally {
       setIsLoading(false);
@@ -267,24 +262,13 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (isOAuthCallback) {
-      const params = new URLSearchParams(window.location.search);
-      const token = params.get('token');
-      const refreshToken = params.get('refresh_token');
-      if (token && refreshToken) {
-        completeOAuthLogin(token, refreshToken);
-        window.history.replaceState({}, '', '/');
-        void loadLibrary();
-        return;
-      }
-      setApiError('Google sign-in did not return a valid session.');
-      setIsLoading(false);
-      return;
-    }
-    if (hasAuthToken()) {
+    if (isLoaded && isSignedIn) {
       void loadLibrary();
+    } else if (isLoaded && !isSignedIn) {
+      setIsLoading(false);
+      setCurrentUser(null);
     }
-  }, [isOAuthCallback]);
+  }, [isLoaded, isSignedIn]);
 
   // Handle Login complete
   const handleLoginSuccess = () => {
@@ -294,7 +278,6 @@ export default function App() {
 
   // Handle user logout
   const handleLogout = () => {
-    clearAuthToken();
     setCurrentUser(null);
     setCollections([]);
     setReels([]);
@@ -386,12 +369,8 @@ export default function App() {
   };
 
   // Check login presence helper
-  if (isLoading) {
+  if (!isLoaded || isLoading) {
     return <div className="min-h-screen bg-app-bg flex items-center justify-center text-primary font-semibold">Loading your library...</div>;
-  }
-
-  if (!currentUser) {
-    return <AuthScreen onLogin={handleLoginSuccess} />;
   }
 
   const unreadCount = appNotifications.filter(n => !n.isRead).length;
@@ -1366,13 +1345,7 @@ export default function App() {
               
               {/* Profile Card Header (Screen 1) */}
               <div className="bg-white rounded-2xl border border-brand-outline-variant/15 p-4 flex items-center gap-4 shadow-sm">
-                <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-primary-orange flex-shrink-0 shadow-inner">
-                  <img
-                    src={currentUser.avatarUrl}
-                    alt={currentUser.name}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
+                <div className="scale-125 ml-2"><UserButton /></div>
                 <div>
                   <h3 className="font-display font-black text-lg text-on-surface leading-tight">
                     {currentUser.name}
@@ -1411,72 +1384,7 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Security segment box (Screen 1) */}
-              <div className="space-y-3.5">
-                <h4 className="flex items-center gap-2 font-display font-extrabold text-base text-on-surface tracking-tight">
-                  <Key className="w-4 h-4 text-[#9d4300]" />
-                  <span>Security</span>
-                </h4>
-
-                <div className="bg-white rounded-2xl border border-brand-outline-variant/12 p-4 space-y-4 shadow-sm">
-                  {showPasswordAlert && (
-                    <div className="bg-green-50 border-l-4 border-emerald-500 p-3 rounded text-xs text-emerald-700 font-medium">
-                      Password credentials updated successfully!
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-widest text-[#584237] mb-1 font-display">
-                      Current Password
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showCurrentPassword ? 'text' : 'password'}
-                        value={currentPassword}
-                        onChange={(e) => setCurrentPassword(e.target.value)}
-                        className="w-full pl-3 pr-10 py-2.5 bg-surface-low border border-brand-outline-variant/15 rounded-xl text-xs font-mono text-on-surface focus:outline-none"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-muted/50 hover:text-primary transition-colors cursor-pointer p-1 rounded-full hover:bg-black/5"
-                        aria-label={showCurrentPassword ? "Hide current password" : "Show current password"}
-                      >
-                        {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-widest text-[#584237] mb-1 font-display">
-                      New Password
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showNewPassword ? 'text' : 'password'}
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        className="w-full pl-3 pr-10 py-2.5 bg-surface-low border border-brand-outline-variant/15 rounded-xl text-xs font-mono text-on-surface focus:outline-none"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowNewPassword(!showNewPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-muted/50 hover:text-primary transition-colors cursor-pointer p-1 rounded-full hover:bg-black/5"
-                        aria-label={showNewPassword ? "Hide new password" : "Show new password"}
-                      >
-                        {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={handlePasswordUpdate}
-                    className="w-full py-3 bg-gradient-to-r from-primary-orange to-primary text-white font-display font-extrabold text-xs uppercase tracking-widest rounded-xl shadow-md active:scale-98 transition-all cursor-pointer"
-                  >
-                    Update Password
-                  </button>
-                </div>
-              </div>
+              
 
               {/* Connected Platforms slider list (Screen 1) */}
               <div className="space-y-3">
@@ -2077,6 +1985,9 @@ export default function App() {
         </AnimatePresence>
 
       </div>
-    </div>
+          </div>
+        )}
+      </SignedIn>
+    </>
   );
 }

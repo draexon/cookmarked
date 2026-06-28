@@ -2,7 +2,6 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const express = require('express');
-const bcrypt = require('bcrypt');
 const multer = require('multer');
 const authenticateToken = require('../middleware/authenticateToken');
 const { db } = require('../db/database');
@@ -64,33 +63,7 @@ router.patch('/users/me', (req, res, next) => {
   }
 });
 
-router.patch('/users/me/password', async (req, res, next) => {
-  try {
-    const currentPassword = String(req.body?.current_password || '');
-    const newPassword = String(req.body?.new_password || '');
 
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({ success: false, message: 'Current password and new password are required' });
-    }
-
-    const user = getCurrentUser(req.user.id);
-    if (!user || !user.password_hash) {
-      return res.status(404).json({ success: false, message: 'User not found' });
-    }
-
-    const passwordMatches = await bcrypt.compare(currentPassword, user.password_hash);
-    if (!passwordMatches) {
-      return res.status(401).json({ success: false, message: 'Current password is incorrect' });
-    }
-
-    const passwordHash = await bcrypt.hash(newPassword, PASSWORD_SALT_ROUNDS);
-    db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(passwordHash, req.user.id);
-
-    return ok(res, sanitizeUser(getCurrentUser(req.user.id)));
-  } catch (err) {
-    return next(err);
-  }
-});
 
 router.patch('/users/me/avatar', upload.single('avatar'), (req, res, next) => {
   try {

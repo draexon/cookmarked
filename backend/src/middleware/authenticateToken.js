@@ -1,29 +1,28 @@
-const jwt = require('jsonwebtoken');
+const { ClerkExpressRequireAuth } = require('@clerk/clerk-sdk-node');
+const { db } = require('../db/database');
 
-function authenticateToken(req, res, next) {
-  const authHeader = req.get('authorization') || '';
-  const [scheme, token] = authHeader.split(' ');
+const clerkAuth = ClerkExpressRequireAuth();
 
-  if (scheme !== 'Bearer' || !token) {
-    return res.status(401).json({ message: 'Missing bearer token' });
+function syncUserMiddleware(req, res, next) {
+  if (!req.auth || !req.auth.userId) {
+    return res.status(401).json({ message: 'Unauthorized' });
   }
 
-  try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
-    if (payload.type === 'refresh') {
-      return res.status(401).json({ message: 'Invalid or expired token' });
-    }
-
-    req.user = {
-      id: payload.id,
-      email: payload.email,
-      name: payload.name,
-    };
-
-    return next();
-  } catch (_err) {
-    return res.status(401).json({ message: 'Invalid or expired token' });
+  const clerkId = req.auth.userId;
+  
+  let user = db.prepare('SELECT * FROM users WHERE clerk_id = ?').get(clerkId);
+  
+  if (!user) {
+    const result = db.prepare('INSERT INTO users (clerk_id, name) VALUES (?, ?)').run(clerkId, 'User');
+    user = db.prepare('SELECT * FROM users WHERE id = ?').get(result.lastInsertRowid);
   }
+
+  req.user = {
+    id: user.id,
+    clerk_id: user.clerk_id,
+  };
+
+  next();
 }
 
-module.exports = authenticateToken;
+module.exports = [clerkAuth, syncUserMiddleware];

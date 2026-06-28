@@ -60,7 +60,9 @@ function ensureColumn(table, column, definition) {
 ensureColumn('users', 'email', 'TEXT');
 ensureColumn('users', 'password_hash', 'TEXT');
 ensureColumn('users', 'avatar_url', 'TEXT');
+ensureColumn('users', 'clerk_id', 'TEXT');
 db.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email)').run();
+db.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_clerk_id ON users(clerk_id)').run();
 
 ensureColumn('collections', 'last_opened_at', 'DATETIME');
 

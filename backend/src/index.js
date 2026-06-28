@@ -2,7 +2,6 @@ const express = require('express');
 const path = require('path');
 const cors = require('cors');
 const { port } = require('./config');
-const authRouter = require('./routes/auth');
 const collectionsRouter = require('./routes/collections');
 const reelsRouter = require('./routes/reels');
 const searchRouter = require('./routes/search');
@@ -49,7 +48,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // ─── API routes ──────────────────────────────────────────────────────────────
-app.use('/api/auth', authRouter);
 app.use('/api', collectionsRouter);
 app.use('/api', reelsRouter);
 app.use('/api', searchRouter);
