@@ -22,6 +22,7 @@ const worker = new Worker(
 
     // 4 — Ask Gemini for category
     const categoryName = await categorizeReel({
+      url,
       title,
       description,
       thumbnailUrl: thumbnail,

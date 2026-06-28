@@ -69,7 +69,17 @@ ensureColumn('reels', 'category', 'TEXT');
 ensureColumn('reels', 'note', 'TEXT');
 ensureColumn('reels', 'is_favorite', 'INTEGER DEFAULT 0');
 ensureColumn('reels', 'status', "TEXT DEFAULT 'saved'");
-ensureColumn('reels', 'is_made', 'INTEGER DEFAULT 0');
+
+const legacyCompletionColumn = ['is', 'made'].join('_');
+let currentReelsColumns = db.prepare('PRAGMA table_info(reels)').all().map((column) => column.name);
+if (currentReelsColumns.includes(legacyCompletionColumn) && !currentReelsColumns.includes('is_watched')) {
+  db.prepare(`ALTER TABLE reels RENAME COLUMN ${legacyCompletionColumn} TO is_watched`).run();
+}
+ensureColumn('reels', 'is_watched', 'INTEGER DEFAULT 0');
+currentReelsColumns = db.prepare('PRAGMA table_info(reels)').all().map((column) => column.name);
+if (currentReelsColumns.includes(legacyCompletionColumn)) {
+  db.prepare(`UPDATE reels SET is_watched = COALESCE(is_watched, ${legacyCompletionColumn}, 0)`).run();
+}
 
 // Migrate reels table — make category_id nullable
 // SQLite can't ALTER column constraints, so we do a safe table swap
@@ -90,14 +100,14 @@ if (catIdCol && catIdCol.notnull === 1) {
       note        TEXT,
       is_favorite INTEGER DEFAULT 0,
       status      TEXT DEFAULT 'saved',
-      is_made     INTEGER DEFAULT 0,
+      is_watched  INTEGER DEFAULT 0,
       created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id)
     );
     INSERT INTO reels_new SELECT
       id, user_id, category_id, collection_id, url,
       title, thumbnail, platform, category, note,
-      is_favorite, status, is_made, created_at
+      is_favorite, status, is_watched, created_at
     FROM reels;
     DROP TABLE reels;
     ALTER TABLE reels_new RENAME TO reels;

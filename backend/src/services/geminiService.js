@@ -16,7 +16,7 @@ function cleanCategory(value) {
 }
 
 const SIMILAR_TOPIC_WORDS = {
-  food: ['food', 'recipe', 'recipes', 'cooking', 'cook', 'meal', 'dish', 'pasta', 'pizza', 'biryani', 'dinner', 'lunch', 'breakfast'],
+  lifestyle: ['lifestyle', 'home', 'style', 'wellness', 'routine', 'daily'],
   fitness: ['fitness', 'workout', 'gym', 'exercise', 'training', 'cardio', 'yoga', 'hiit'],
   travel: ['travel', 'trip', 'tour', 'hotel', 'flight', 'vacation', 'beach', 'mountain'],
   dance: ['dance', 'dancing', 'choreography', 'choreograph'],
@@ -60,6 +60,23 @@ function matchExistingCollection(category, collections) {
   return cleaned;
 }
 
+function extractCategoryFromModelText(text) {
+  const raw = String(text || '').trim();
+  const jsonMatch = raw.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    try {
+      const parsed = JSON.parse(jsonMatch[0]);
+      if (parsed.explicit_cover_text === true || parsed.category_override === 'Other') {
+        return 'Other';
+      }
+      return parsed.category || parsed.collection || parsed.topic || '';
+    } catch (err) {
+      console.warn('[gemini] category JSON parse failed', { error: err.message });
+    }
+  }
+  return raw;
+}
+
 async function getImagePart(thumbnailUrl) {
   if (!thumbnailUrl) return null;
 
@@ -90,16 +107,17 @@ async function getImagePart(thumbnailUrl) {
   }
 }
 
-async function categorizeReel({ title, description, thumbnailUrl, existingCategories = [], existingCollections }) {
+async function categorizeReel({ url, title, description, thumbnailUrl, existingCategories = [], existingCollections }) {
   const collections = existingCollections || existingCategories || [];
   const collectionList = collections.length > 0
     ? collections.map((name) => `- ${name}`).join('\n')
     : '- Other';
 
   const prompt = `
-You are CookMarked's AI categorizer. Your job is to categorize a saved reel.
+You are CookMarked's AI analyzer. Analyze this reel/video metadata and extract useful save details.
 
 Reel title: "${title}"
+Reel/video URL: "${url || ''}"
 Reel caption/description: "${description}"
 Thumbnail image: ${thumbnailUrl ? 'attached' : 'not available'}
 
@@ -107,22 +125,24 @@ Existing user collections:
 ${collectionList}
 
 Rules:
-1. First understand the caption/title text. Treat it as the primary source.
-2. Use the thumbnail image only when the text is generic, missing, clickbait, or unclear.
-3. Extract the main broad topic, not a tiny detail. Examples: Food, Fitness, Travel, Dance, Chess, Tech.
-4. Before creating a new collection, compare the extracted topic against every existing collection.
-5. If any existing collection is semantically similar, return that exact existing collection name.
-   Examples: pasta/recipe/cooking -> Food, workout/gym -> Fitness, trip/hotel -> Travel.
-6. Avoid creating too many collections. Create a new collection only when no existing collection is a good match.
-7. If there is no useful text or image detail, return exactly: Other.
-8. Reply with ONLY the final collection name. No JSON, no explanation.
+1. If a thumbnail image is attached, analyze the reel cover first. Treat visible cover content and visible cover text as the primary source.
+2. Use the title, caption, hashtags, URL text, and tags only as secondary evidence.
+3. If the cover topic and caption/tag topic clearly match, use that shared broad category.
+4. If the caption/tags conflict with the cover, ignore the caption/tags and choose the category from the cover image.
+5. If the cover contains explicit, adult, sexual, violent, hateful, abusive, slur-like, scam, or unsafe words/text, set "category" to "Other", set "explicit_cover_text" to true, and do not use the caption/tags to override it.
+6. If the cover image is unavailable or unreadable, fall back to the title/caption/tags.
+7. Extract a broad category, not a tiny detail. Examples: Fitness, Travel, Fashion, DIY, Tech, Education, Comedy, Music.
+8. Before suggesting a new category, compare it against every existing collection.
+9. If any existing collection is semantically similar, put that exact existing collection name in "category", unless rule 5 applies.
+10. Avoid creating too many collections. Use "Other" when there is no useful cover, title, caption, tag, or URL detail.
+11. Return ONLY compact JSON with these keys: title, category, description, creator_name, tags, cover_topic, caption_topic, cover_caption_match, explicit_cover_text.
 `;
 
   try {
     const imagePart = await getImagePart(thumbnailUrl);
     const parts = imagePart ? [prompt, imagePart] : [prompt];
     const result = await model.generateContent(parts);
-    const category = matchExistingCollection(result.response.text(), collections) || 'Other';
+    const category = matchExistingCollection(extractCategoryFromModelText(result.response.text()), collections) || 'Other';
     console.info('[gemini] categorized reel', {
       model: modelName,
       category,

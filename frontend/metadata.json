@@ -1,0 +1,6 @@
+{
+  "name": "CookMarked",
+  "description": "A refined culinary canvas for bookmarking, saving, and organizing cooking reels from Instagram, TikTok, and YouTube into custom collections with AI assistance.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

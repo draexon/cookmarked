@@ -1,10 +1,12 @@
 const URL_REGEX = /https?:\/\/[^\s]+/gi;
 
 const PLATFORM_PATTERNS = {
-  instagram: /instagram\.com\/(reel|reels|p|tv)\//i,
-  youtube: /youtube\.com\/(shorts\/|watch\?)|youtu\.be\//i,
-  facebook: /facebook\.com\/(reel|watch|video)/i,
-  tiktok: /tiktok\.com\/@.+\/video\/|vm\.tiktok\.com\//i,
+  Instagram: /instagram\.com\/(reel|reels|p|tv)\//i,
+  YouTube: /youtube\.com\/(shorts\/|watch\?)|youtu\.be\//i,
+  Facebook: /facebook\.com\/(reel|watch|video)/i,
+  TikTok: /tiktok\.com\/@.+\/video\/|vm\.tiktok\.com\//i,
+  Netflix: /netflix\.com\/(watch|title)\//i,
+  'Prime Video': /(primevideo\.com\/(detail|region)|amazon\.[a-z.]+\/.*(?:gp\/video|dp\/))/i,
 };
 
 function extractUrl(message) {
@@ -31,7 +33,7 @@ function detectPlatform(url) {
   for (const [platform, pattern] of Object.entries(PLATFORM_PATTERNS)) {
     if (pattern.test(url)) return platform;
   }
-  return 'unknown';
+  return 'Other';
 }
 
 module.exports = { extractUrl, detectPlatform };

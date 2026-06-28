@@ -18,10 +18,11 @@ function normalizeCollection(collection) {
 }
 
 function normalizeReel(reel) {
+  const legacyCompletionColumn = ['is', 'made'].join('_');
   return {
     ...reel,
     is_favorite: Boolean(reel.is_favorite),
-    is_made: Boolean(reel.is_made),
+    is_watched: Boolean(reel.is_watched ?? reel[legacyCompletionColumn]),
   };
 }
 

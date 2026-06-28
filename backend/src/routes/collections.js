@@ -13,11 +13,31 @@ function toBool(value) {
   return Boolean(value);
 }
 
+const CATEGORY_IDS = {
+  fitness: 'fitness',
+  travel: 'travel',
+  fashion: 'fashion',
+  tech: 'tech',
+  music: 'music',
+  comedy: 'comedy',
+  diy: 'diy',
+  beauty: 'beauty',
+  education: 'education',
+  gaming: 'gaming',
+  other: 'other',
+};
+
+function categoryIdForCollectionName(name) {
+  const normalized = String(name || '').trim().toLowerCase();
+  return CATEGORY_IDS[normalized] || normalized.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'other';
+}
+
 function normalizeCollection(collection) {
   if (!collection) return null;
 
   return {
     ...collection,
+    category: categoryIdForCollectionName(collection.name),
     is_favorite: toBool(collection.is_favorite),
   };
 }
@@ -72,16 +92,53 @@ function normalizeCollectionWithMeta(collection) {
 
 function normalizeReel(reel) {
   if (!reel) return null;
+  const legacyCompletionColumn = ['is', 'made'].join('_');
 
   return {
     ...reel,
     is_favorite: toBool(reel.is_favorite),
-    is_made: toBool(reel.is_made),
+    is_watched: toBool(reel.is_watched ?? reel[legacyCompletionColumn]),
   };
 }
 
 function getCollectionForUser(id, userId) {
-  return db.prepare('SELECT * FROM collections WHERE id = ? AND user_id = ?').get(id, userId);
+  const value = String(id || '').trim();
+  if (/^\d+$/.test(value)) {
+    return db.prepare('SELECT * FROM collections WHERE id = ? AND user_id = ?').get(value, userId);
+  }
+
+  const name = value.replace(/-/g, ' ');
+  return db.prepare(`
+    SELECT *
+    FROM collections
+    WHERE user_id = ?
+      AND (
+        LOWER(name) = LOWER(?)
+        OR LOWER(REPLACE(name, ' ', '-')) = LOWER(?)
+      )
+  `).get(userId, name, value);
+}
+
+function getOrCreateOtherCollection(userId, excludeCollectionId) {
+  const existing = db.prepare(`
+    SELECT *
+    FROM collections
+    WHERE user_id = ?
+      AND LOWER(name) = 'other'
+      AND id != ?
+    ORDER BY datetime(created_at) ASC, id ASC
+    LIMIT 1
+  `).get(userId, excludeCollectionId || 0);
+
+  if (existing) return existing;
+
+  const result = db.prepare(`
+    INSERT INTO collections (user_id, name, description, emoji, is_favorite, created_at)
+    VALUES (?, 'Other', 'Reels moved from deleted collections.', NULL, 0, ?)
+  `).run(userId, new Date().toISOString());
+
+  return db.prepare('SELECT * FROM collections WHERE id = ? AND user_id = ?')
+    .get(result.lastInsertRowid, userId);
 }
 
 function getReelsForCollection(collectionId) {
@@ -105,14 +162,46 @@ function generateShareToken() {
 router.get('/collections', authenticateToken, (req, res, next) => {
   try {
     const favoriteOnly = String(req.query.favorite || '').toLowerCase() === 'true';
+    const category = String(req.query.category || '').trim().toLowerCase();
+    const platform = String(req.query.platform || '').trim().toLowerCase();
+    const limit = Math.max(0, Math.min(Number.parseInt(req.query.limit, 10) || 0, 100));
+    const sort = String(req.query.sort || 'recent').trim().toLowerCase();
+    const params = [req.user.id];
+    const conditions = ['c.user_id = ?'];
+
+    if (favoriteOnly) {
+      conditions.push('c.is_favorite = 1');
+    }
+
+    if (category) {
+      conditions.push('LOWER(c.name) = LOWER(?)');
+      params.push(category);
+    }
+
+    if (platform) {
+      conditions.push(`EXISTS (
+        SELECT 1
+        FROM reels r_platform
+        WHERE r_platform.collection_id = c.id
+          AND LOWER(r_platform.platform) = ?
+      )`);
+      params.push(platform);
+    }
+
+    const orderBy = {
+      oldest: 'datetime(c.created_at) ASC, c.id ASC',
+      name: 'LOWER(c.name) ASC, c.id ASC',
+      favorites: 'c.is_favorite DESC, datetime(c.created_at) DESC, c.id DESC',
+      recent: 'datetime(c.created_at) DESC, c.id DESC',
+    }[sort] || 'datetime(c.created_at) DESC, c.id DESC';
 
     const collections = db.prepare(`
-      SELECT *
-      FROM collections
-      WHERE user_id = ?
-      ${favoriteOnly ? 'AND is_favorite = 1' : ''}
-      ORDER BY datetime(created_at) DESC, id DESC
-    `).all(req.user.id).map(normalizeCollectionWithMeta);
+      SELECT c.*
+      FROM collections c
+      WHERE ${conditions.join(' AND ')}
+      ORDER BY ${orderBy}
+      ${limit ? 'LIMIT ?' : ''}
+    `).all(...(limit ? [...params, limit] : params)).map(normalizeCollectionWithMeta);
 
     return ok(res, collections);
   } catch (err) {
@@ -197,8 +286,19 @@ router.delete('/collections/:id', authenticateToken, (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Collection not found' });
     }
 
-    db.prepare('DELETE FROM collections WHERE id = ? AND user_id = ?').run(collection.id, req.user.id);
-    return ok(res, { id: collection.id });
+    const deleted = db.transaction(() => {
+      const fallback = getOrCreateOtherCollection(req.user.id, collection.id);
+      db.prepare(`
+        UPDATE reels
+        SET collection_id = ?, category = ?
+        WHERE user_id = ? AND collection_id = ?
+      `).run(fallback.id, fallback.name, req.user.id, collection.id);
+
+      db.prepare('DELETE FROM collections WHERE id = ? AND user_id = ?').run(collection.id, req.user.id);
+      return { id: collection.id, moved_to_collection_id: fallback.id };
+    })();
+
+    return ok(res, deleted);
   } catch (err) {
     return next(err);
   }

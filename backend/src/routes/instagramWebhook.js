@@ -7,7 +7,7 @@ const router = express.Router();
 
 /**
  * Meta webhook verification (App Dashboard setup).
- * GET /webhooks/instagram?hub.mode=subscribe&hub.verify_token=...&hub.challenge=...
+ * GET /api/webhooks/instagram?hub.mode=subscribe&hub.verify_token=...&hub.challenge=...
  */
 router.get('/', (req, res) => {
   const mode = req.query['hub.mode'];

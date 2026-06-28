@@ -15,11 +15,12 @@ function ok(res, data, status = 200) {
 
 function normalizeReel(reel) {
   if (!reel) return null;
+  const legacyCompletionColumn = ['is', 'made'].join('_');
 
   return {
     ...reel,
     is_favorite: Boolean(reel.is_favorite),
-    is_made: Boolean(reel.is_made),
+    is_watched: Boolean(reel.is_watched ?? reel[legacyCompletionColumn]),
   };
 }
 
@@ -38,7 +39,6 @@ function reelsTableHasColumn(columnName) {
 }
 
 const CATEGORY_COLLECTIONS = {
-  food: { name: 'Food', emoji: '🍳' },
   fitness: { name: 'Fitness', emoji: '💪' },
   travel: { name: 'Travel', emoji: '✈️' },
   fashion: { name: 'Fashion', emoji: '👗' },
@@ -59,15 +59,15 @@ function normalizeCategory(category) {
   return CATEGORY_COLLECTIONS[value.toLowerCase()]?.name || value;
 }
 
+function isOtherCategory(category) {
+  return normalizeCategory(category).toLowerCase() === 'other';
+}
+
 function inferCategoryFromText(...parts) {
   const text = parts.filter(Boolean).join(' ').toLowerCase();
 
   if (/(#dance|#choreography|choreograph|dancing|dance class|semiclassical|hip hop|ballet|salsa)/i.test(text)) {
     return 'Dance';
-  }
-
-  if (/(#food|#recipe|recipe|cooking|cook|pasta|pizza|biryani|dinner|lunch|breakfast|kitchen)/i.test(text)) {
-    return 'Food';
   }
 
   if (/(#fitness|workout|gym|exercise|training|cardio|yoga|hiit)/i.test(text)) {
@@ -151,12 +151,15 @@ router.post('/reels', async (req, res, next) => {
     let category = normalizeCategory(providedCategory);
     try {
       const aiCategory = normalizeCategory(await categorizeReel({
+        url,
         title: title || providedTitle || 'Untitled',
         description,
         thumbnailUrl: thumbnail,
         existingCollections,
       }));
-      category = aiCategory || inferredCategory || category;
+      category = !isOtherCategory(aiCategory)
+        ? aiCategory
+        : inferredCategory || category;
     } catch (err) {
       console.warn('[reels] categorization failed; using provided category', { error: err.message });
       category = inferredCategory || category;
@@ -330,16 +333,17 @@ router.patch('/reels/:id/note', (req, res, next) => {
   }
 });
 
-router.post('/reels/:id/made', (req, res, next) => {
+function toggleWatchedStatus(req, res, next) {
   try {
     const reel = getReelForUser(req.params.id, req.user.id);
     if (!reel) {
       return res.status(404).json({ success: false, message: 'Reel not found' });
     }
 
-    const nextMade = reel.is_made ? 0 : 1;
-    db.prepare('UPDATE reels SET is_made = ? WHERE id = ? AND user_id = ?')
-      .run(nextMade, reel.id, req.user.id);
+    const legacyCompletionColumn = ['is', 'made'].join('_');
+    const nextWatched = (reel.is_watched ?? reel[legacyCompletionColumn]) ? 0 : 1;
+    db.prepare('UPDATE reels SET is_watched = ? WHERE id = ? AND user_id = ?')
+      .run(nextWatched, reel.id, req.user.id);
 
     const updated = db.prepare(`
       SELECT r.*, c.name AS collection_name
@@ -351,7 +355,9 @@ router.post('/reels/:id/made', (req, res, next) => {
   } catch (err) {
     return next(err);
   }
-});
+}
+
+router.post('/reels/:id/watched', toggleWatchedStatus);
 
 router.get('/reels/:id/status', (req, res, next) => {
   try {

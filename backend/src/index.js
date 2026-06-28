@@ -16,6 +16,8 @@ const app = express();
 
 app.use(cors({
   origin: 'http://localhost:5173',
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
 app.use((req, res, next) => {
@@ -25,17 +27,17 @@ app.use((req, res, next) => {
 
 // ─── Webhook route: must capture rawBody BEFORE global express.json() ──────
 app.use(
-  '/webhooks/instagram',
+  '/api/webhooks/instagram',
   express.json({
     verify: (req, _res, buf) => {
       req.rawBody = buf;
     },
   }),
 );
-app.use('/webhooks/instagram', instagramWebhook);
+app.use('/api/webhooks/instagram', instagramWebhook);
 
 // ─── Health ──────────────────────────────────────────────────────────────────
-app.get('/health', (_req, res) => {
+app.get('/api/health', (_req, res) => {
   res.json({ ok: true, service: 'cookmarked' });
 });
 
@@ -66,5 +68,5 @@ app.use((err, _req, res, _next) => {
 
 app.listen(port, () => {
   console.info(`CookMarked API listening on http://localhost:${port}`);
-  console.info(`Instagram webhook: http://localhost:${port}/webhooks/instagram`);
+  console.info(`Instagram webhook: http://localhost:${port}/api/webhooks/instagram`);
 });
