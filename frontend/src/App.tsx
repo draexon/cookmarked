@@ -398,7 +398,15 @@ export default function App() {
     : reels.filter((reel) => reel.collectionId === feedCollectionId);
 
   return (
-    <div className="min-h-screen max-w-full overflow-x-hidden bg-[#FAFAF8] selection:bg-primary-orange/20 selection:text-primary pb-24 md:pb-0">
+    <>
+      <SignedOut>
+        <div className="min-h-screen bg-app-bg flex items-center justify-center py-12">
+          <SignIn routing="hash" />
+        </div>
+      </SignedOut>
+      <SignedIn>
+        {currentUser && (
+          <div className="min-h-screen max-w-full overflow-x-hidden bg-[#FAFAF8] selection:bg-primary-orange/20 selection:text-primary pb-24 md:pb-0">
       <DesktopSidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
