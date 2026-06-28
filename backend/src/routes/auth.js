@@ -14,7 +14,7 @@ const GOOGLE_CLIENT_ID     = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const FRONTEND_URL         = process.env.FRONTEND_URL || 'http://localhost:5173';
 const BACKEND_URL          = process.env.BACKEND_URL  || 'http://localhost:3000';
-const REDIRECT_URI         = `${BACKEND_URL}/api/auth/google/callback`;
+const REDIRECT_URI         = process.env.GOOGLE_CALLBACK_URL || "http://localhost:3000/api/auth/google/callback";
 
 // ─── Helper functions (must be before routes) ────────────────────────────────
 
