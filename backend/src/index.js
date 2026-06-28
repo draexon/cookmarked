@@ -37,7 +37,7 @@ app.use(
 app.use('/api/webhooks/instagram', instagramWebhook);
 
 // ─── Health ──────────────────────────────────────────────────────────────────
-app.get('/api/health', (_req, res) => {
+app.get('/health', (_req, res) => {
   res.json({ ok: true, service: 'cookmarked' });
 });
 
