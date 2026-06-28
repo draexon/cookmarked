@@ -42,7 +42,7 @@ export default function AuthScreen({ onLogin }: AuthScreenProps) {
   };
 
   const handleGoogleLogin = () => {
-    window.location.assign(`${API_BASE}/auth/google`);
+    window.location.href = `${import.meta.env.VITE_API_URL}/api/auth/google`;
   };
 
   return (
