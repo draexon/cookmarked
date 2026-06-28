@@ -5,7 +5,7 @@ import {
   Settings, Key, Smartphone, ToggleLeft, ToggleRight, LogOut, Heart, 
   MapPin, Clock, Tag, PlusCircle, Check, Eye, EyeOff, Bell, Pencil,
   ArrowLeft,
-  Home, FolderHeart, User
+  Home, FolderHeart, User, Trash2, MoreVertical
 } from 'lucide-react';
 
 import { Reel, Collection, UserProfile, CookMarkedNotification } from './types';
@@ -25,6 +25,7 @@ import {
   toggleReelFavorite,
   updateCollection,
   updatePassword,
+  deleteReel,
 } from './api/reelService';
 
 import AuthScreen from './components/AuthScreen';
@@ -213,6 +214,40 @@ export default function App() {
 
   // Highlight Overlay for "Random Pick" or "Active Reel Video Player"
   const [highlightedReel, setHighlightedReel] = useState<Reel | null>(null);
+
+  // Delete Reel states
+  const [reelToDelete, setReelToDelete] = useState<Reel | null>(null);
+  const [toastMessage, setToastMessage] = useState('');
+  const [showModalMenu, setShowModalMenu] = useState(false);
+
+  const confirmDeleteReel = async () => {
+    if (!reelToDelete) return;
+    const targetId = reelToDelete.id;
+    const isFav = reelToDelete.isFavorite;
+
+    // Optimistic Update
+    setReels((prev) => prev.filter((r) => r.id !== targetId));
+    if (highlightedReel?.id === targetId) {
+      setHighlightedReel(null);
+    }
+    // Update stats
+    setCurrentUser((user) => user ? {
+      ...user,
+      totalReels: Math.max(0, user.totalReels - 1),
+      totalFavorites: Math.max(0, user.totalFavorites - (isFav ? 1 : 0))
+    } : user);
+
+    setReelToDelete(null);
+
+    try {
+      await deleteReel(targetId);
+      setToastMessage('Reel deleted ✅');
+      setTimeout(() => setToastMessage(''), 3000);
+    } catch (err) {
+      void loadLibrary();
+      setApiError(err instanceof Error ? err.message : 'Unable to delete reel.');
+    }
+  };
 
   const loadLibrary = async () => {
     setIsLoading(true);
@@ -550,6 +585,20 @@ export default function App() {
                         onClick={() => setHighlightedReel(reel)}
                         className="bg-white rounded-2xl border border-brand-outline-variant/10 shadow-md w-full overflow-hidden hover:scale-[1.03] hover:shadow-xl hover:border-primary-orange/40 transition-all duration-[250ms] ease-in-out group relative"
                       >
+                        {/* Delete button float corner */}
+                        <motion.button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setReelToDelete(reel);
+                          }}
+                          whileTap={{ scale: 0.8 }}
+                          whileHover={{ scale: 1.2 }}
+                          transition={{ type: 'spring', stiffness: 420, damping: 18 }}
+                          className="absolute top-2.5 left-2.5 bg-white/95 text-red-600 p-1.5 rounded-full shadow-md z-10 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200 cursor-pointer border-none"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </motion.button>
+
                         {/* Favorite button float corner */}
                         <motion.button
                           onClick={(e) => {
@@ -1040,6 +1089,20 @@ export default function App() {
                                 <span>0:45</span>
                               </div>
 
+                              {/* Delete button float corner */}
+                              <motion.button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setReelToDelete(mainReel);
+                                }}
+                                whileTap={{ scale: 0.8 }}
+                                whileHover={{ scale: 1.2 }}
+                                transition={{ type: 'spring', stiffness: 420, damping: 18 }}
+                                className="absolute right-14 top-3.5 w-9 h-9 bg-white text-red-600 rounded-full flex items-center justify-center shadow-lg cursor-pointer border-none z-10 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all duration-200 ease-in-out"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </motion.button>
+
                               {/* Heart favorite absolute absolute icon */}
                               <motion.button
                                 onClick={(e) => {
@@ -1089,6 +1152,20 @@ export default function App() {
                                 className="bg-white rounded-2xl overflow-hidden border border-brand-outline-variant/10 shadow-md p-1.5 flex flex-col justify-between group cursor-pointer hover:scale-[1.03] hover:shadow-xl hover:border-primary-orange/20 transition-all duration-[250ms] ease-in-out"
                               >
                                 <div className="h-28 bg-[#FAFAF8] rounded-xl overflow-hidden relative">
+                                  {/* Delete button float corner */}
+                                  <motion.button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setReelToDelete(reel);
+                                    }}
+                                    whileTap={{ scale: 0.8 }}
+                                    whileHover={{ scale: 1.2 }}
+                                    transition={{ type: 'spring', stiffness: 420, damping: 18 }}
+                                    className="absolute top-2 left-2 bg-white/95 text-red-600 p-1.5 rounded-full shadow-md z-10 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200 cursor-pointer border-none"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </motion.button>
+
                                   <img
                                     src={reel.imageUrl}
                                     alt={reel.title}
@@ -1197,6 +1274,20 @@ export default function App() {
                       onClick={() => setHighlightedReel(reel)}
                       className="bg-white rounded-2xl border border-brand-outline-variant/10 shadow-md overflow-hidden flex flex-col hover:scale-[1.03] hover:shadow-xl hover:border-primary-orange/40 transition-all duration-[250ms] ease-in-out group relative"
                     >
+                      {/* Delete button float corner */}
+                      <motion.button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setReelToDelete(reel);
+                        }}
+                        whileTap={{ scale: 0.8 }}
+                        whileHover={{ scale: 1.2 }}
+                        transition={{ type: 'spring', stiffness: 420, damping: 18 }}
+                        className="absolute top-2.5 left-2.5 bg-white/95 text-red-600 p-1.5 rounded-full shadow-md z-10 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200 cursor-pointer border-none"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </motion.button>
+
                       {/* Close/Remove favorite toggle trigger */}
                       <motion.button
                         onClick={(e) => {
@@ -1785,7 +1876,7 @@ export default function App() {
         <AnimatePresence>
           {spotlightReel && (
           <motion.div
-            className="fixed inset-0 bg-black/95 flex flex-col items-center justify-center z-50 p-6 text-white select-none"
+            className="fixed inset-0 bg-black/95 flex flex-col items-center justify-start z-50 p-6 pt-24 text-white select-none overflow-y-auto"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -1793,7 +1884,7 @@ export default function App() {
           >
             <div className="absolute top-6 right-6">
               <button
-                onClick={() => setHighlightedReel(null)}
+                onClick={() => { setHighlightedReel(null); setShowModalMenu(false); }}
                 className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 active:scale-95 transition-all duration-200 ease-in-out font-bold text-lg"
               >
                 ✕
@@ -1801,13 +1892,47 @@ export default function App() {
             </div>
 
             <motion.div
-              className="w-full max-w-sm md:max-w-[480px] flex flex-col items-center space-y-6"
+              className="w-full max-w-sm md:max-w-[480px] flex flex-col items-center space-y-6 max-h-[85vh] overflow-y-auto pr-1"
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 20, opacity: 0 }}
               transition={{ duration: 0.3, ease: 'easeInOut' }}
             >
               <div className="w-full aspect-[9/16] bg-slate-900 rounded-2xl overflow-hidden relative shadow-2xl border border-white/10 group">
+                
+                {/* Three-dots menu button */}
+                <div className="absolute left-4 top-4 z-20">
+                  <motion.button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setShowModalMenu(prev => !prev);
+                    }}
+                    whileTap={{ scale: 0.8 }}
+                    whileHover={{ scale: 1.2 }}
+                    className="w-10 h-10 bg-white text-[#584237] rounded-full flex items-center justify-center shadow-lg cursor-pointer border-none z-20"
+                    aria-label="More options"
+                  >
+                    <MoreVertical className="w-5 h-5 text-on-surface-muted/60" />
+                  </motion.button>
+                  {showModalMenu && (
+                    <div className="absolute left-0 mt-2 w-32 bg-white rounded-xl shadow-lg border border-brand-outline-variant/10 py-1.5 z-30">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowModalMenu(false);
+                          setReelToDelete(spotlightReel);
+                        }}
+                        className="w-full text-left px-4 py-2 text-xs font-bold text-red-600 hover:bg-red-50 flex items-center gap-1.5 cursor-pointer border-none"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Delete</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
                 <img
                   src={spotlightReel.imageUrl}
                   alt={spotlightReel.title}
@@ -1892,6 +2017,62 @@ export default function App() {
               </div>
             </motion.div>
           </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* GLOBAL DELETE CONFIRMATION MODAL */}
+        <AnimatePresence>
+          {reelToDelete && (
+            <motion.div
+              className="fixed inset-0 bg-on-surface-dark/60 backdrop-blur-sm flex items-center justify-center z-[100] p-5 select-none"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <div className="absolute inset-0" onClick={() => setReelToDelete(null)} />
+              <motion.div
+                className="relative bg-[#FAFAF8] w-full max-w-sm rounded-[24px] p-6 shadow-2xl border border-[#584237]/10 z-10 space-y-4 text-[#584237]"
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <h3 className="font-display font-black text-lg text-[#584237]">Delete this reel?</h3>
+                <p className="text-xs text-on-surface-muted/70 font-medium">This cannot be undone.</p>
+                <div className="flex gap-2.5 justify-end pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setReelToDelete(null)}
+                    className="text-xs font-bold text-on-surface-muted/60 hover:text-on-surface px-4 py-2 cursor-pointer transition-all duration-200 ease-in-out active:scale-95"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={confirmDeleteReel}
+                    className="bg-red-600 text-white text-xs font-bold px-5 py-2.5 rounded-xl hover:bg-red-700 shadow-md active:scale-95 transition-all duration-200 ease-in-out cursor-pointer"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* TOAST MESSAGE ALERT */}
+        <AnimatePresence>
+          {toastMessage && (
+            <motion.div
+              className="fixed bottom-6 right-6 bg-[#1c1b1b]/95 text-white px-4 py-3 rounded-2xl shadow-xl flex items-center gap-2 z-[110] text-xs font-bold border border-white/10"
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 20, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <span>{toastMessage}</span>
+            </motion.div>
           )}
         </AnimatePresence>
 
