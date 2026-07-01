@@ -201,7 +201,7 @@ function findOrCreateUser(instagramId, name) {
   return user;
 }
 
-// --- Categories ---
+// --- Categories (legacy — do not delete) ---
 function findOrCreateCategory(userId, name) {
   const normalized = name.trim();
   let cat = db.prepare('SELECT * FROM categories WHERE user_id = ? AND LOWER(name) = LOWER(?)').get(userId, normalized);
@@ -212,16 +212,41 @@ function findOrCreateCategory(userId, name) {
   return cat;
 }
 
+// --- Collections (new system — all new saves use this) ---
+function findOrCreateCollection(userId, name, emoji = '📌') {
+  const normalized = String(name || 'Other').trim();
+  let collection = db.prepare(
+    'SELECT * FROM collections WHERE user_id = ? AND LOWER(name) = LOWER(?)'
+  ).get(userId, normalized);
+
+  if (!collection) {
+    const result = db.prepare(`
+      INSERT INTO collections (user_id, name, description, emoji, is_favorite, created_at)
+      VALUES (?, ?, ?, ?, 0, ?)
+    `).run(
+      userId,
+      normalized,
+      `Auto-created for ${normalized.toLowerCase()} reels.`,
+      emoji,
+      new Date().toISOString()
+    );
+    collection = db.prepare('SELECT * FROM collections WHERE id = ?').get(result.lastInsertRowid);
+  }
+
+  return collection;
+}
+
 function getUserCategories(userId) {
   return db.prepare('SELECT * FROM categories WHERE user_id = ?').all(userId);
 }
 
 // --- Reels ---
-function saveReel({ userId, categoryId, url, title, thumbnail, platform }) {
+function saveReel({ userId, collectionId, url, title, thumbnail, platform, category, note }) {
+  // Always saves to collections system (collection_id), not legacy category_id
   return db.prepare(`
-    INSERT INTO reels (user_id, category_id, url, title, thumbnail, platform)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `).run(userId, categoryId, url, title, thumbnail, platform);
+    INSERT INTO reels (user_id, collection_id, url, title, thumbnail, platform, category, note, is_favorite, status, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 'saved', ?)
+  `).run(userId, collectionId, url, title, thumbnail, platform, category || null, note || null, new Date().toISOString());
 }
 
 function getReelsByCategory(userId, categoryId) {
@@ -236,6 +261,7 @@ module.exports = {
   db,
   findOrCreateUser,
   findOrCreateCategory,
+  findOrCreateCollection,
   getUserCategories,
   saveReel,
   getReelsByCategory,
