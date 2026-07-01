@@ -1,105 +1,30 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-const axios = require('axios');
 const { geminiApiKey } = require('../config');
 
 const genAI = new GoogleGenerativeAI(geminiApiKey);
-const modelName = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+// Fallback to flash if no env var, just in case
+const modelName = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
 const model = genAI.getGenerativeModel({ model: modelName });
 
-function cleanCategory(value) {
-  return String(value || '')
-    .split('\n')[0]
-    .replace(/^["'`]+|["'`]+$/g, '')
-    .replace(/^category:\s*/i, '')
-    .trim()
-    .slice(0, 40);
-}
-
-const SIMILAR_TOPIC_WORDS = {
-  lifestyle: ['lifestyle', 'home', 'style', 'wellness', 'routine', 'daily'],
-  fitness: ['fitness', 'workout', 'gym', 'exercise', 'training', 'cardio', 'yoga', 'hiit'],
-  travel: ['travel', 'trip', 'tour', 'hotel', 'flight', 'vacation', 'beach', 'mountain'],
-  dance: ['dance', 'dancing', 'choreography', 'choreograph'],
-  chess: ['chess', 'gambit', 'checkmate', 'knight', 'bishop', 'rook'],
-  tech: ['tech', 'technology', 'coding', 'programming', 'software', 'app', 'ai'],
-};
-
-function wordsFor(value) {
-  return String(value || '')
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, ' ')
-    .split(/\s+/)
-    .filter(Boolean);
-}
-
-function matchExistingCollection(category, collections) {
-  const cleaned = cleanCategory(category);
-  if (!cleaned || !collections.length) return cleaned;
-
-  const exact = collections.find((name) => name.toLowerCase() === cleaned.toLowerCase());
-  if (exact) return exact;
-
-  const categoryWords = wordsFor(cleaned);
-  const containsMatch = collections.find((name) => {
-    const collectionWords = wordsFor(name);
-    return categoryWords.some((word) => collectionWords.includes(word)) ||
-      collectionWords.some((word) => categoryWords.includes(word));
-  });
-  if (containsMatch) return containsMatch;
-
-  for (const relatedWords of Object.values(SIMILAR_TOPIC_WORDS)) {
-    const categoryMatchesGroup = categoryWords.some((word) => relatedWords.includes(word));
-    if (!categoryMatchesGroup) continue;
-
-    const relatedCollection = collections.find((name) =>
-      wordsFor(name).some((word) => relatedWords.includes(word))
-    );
-    if (relatedCollection) return relatedCollection;
-  }
-
-  return cleaned;
-}
-
-function extractCategoryFromModelText(text) {
-  const raw = String(text || '').trim();
-  const jsonMatch = raw.match(/\{[\s\S]*\}/);
-  if (jsonMatch) {
-    try {
-      const parsed = JSON.parse(jsonMatch[0]);
-      if (parsed.explicit_cover_text === true || parsed.category_override === 'Other') {
-        return 'Other';
-      }
-      return parsed.category || parsed.collection || parsed.topic || '';
-    } catch (err) {
-      console.warn('[gemini] category JSON parse failed', { error: err.message });
-    }
-  }
-  return raw;
-}
-
-
-
-async function categorizeReel({ url, title, description, existingCategories = [], existingCollections }) {
-  const collections = existingCollections || existingCategories || [];
-  const collectionList = collections.length > 0
-    ? collections.map((name) => `- ${name}`).join('\n')
-    : '- Other';
+async function categorizeReel({ url, title, description, existingCategories = [], existingCollections = [] }) {
+  const collections = existingCollections.length > 0 ? existingCollections : existingCategories;
+  const categoryList = collections.length > 0
+    ? `User's existing categories: ${collections.join(', ')}`
+    : 'User has no categories yet.';
 
   const prompt = `
-You are CookMarked's AI analyzer. Analyze this reel/video metadata and extract useful save details.
+You are AllMarked's AI categorizer. Categorize this saved reel.
 
+Reel URL: "${url || ''}"
 Reel title: "${title}"
-Reel/video URL: "${url || ''}"
-Reel caption/description: "${description}"
+Reel description: "${description}"
 
-Existing user collections:
-${collectionList}
+${categoryList}
 
 Rules:
-1. If a thumbnail image is attached, analyze the reel cover first. Treat visible cover content and visible cover text as the primary source.
-2. Use the title, caption, hashtags, URL text, and tags only as secondary evidence.
-3. If the title is generic or unhelpful (e.g., contains only "reel", "video", "post", or is empty), focus heavily on the URL structure and extract any hashtags from the description.
-4. If the title is generic or unhelpful, look for hashtags in the description. Hashtags are the most reliable signal.
+1. If title is generic (just "reel", "video", "login", "untitled", or empty) 
+   → use hashtags from description ONLY
+2. Hashtags are strongest signal:
    #skating/#skate → Sports
    #food/#recipe/#cooking → Food
    #travel/#wanderlust → Travel
@@ -108,29 +33,18 @@ Rules:
    #comedy/#funny/#memes → Comedy
    #fashion/#ootd → Fashion
    #tech/#coding → Technology
-5. If the cover topic and caption/tag topic clearly match, use that shared broad category.
-6. If the caption/tags conflict with the cover, ignore the caption/tags and choose the category from the cover image.
-7. If the cover contains explicit, adult, sexual, violent, hateful, abusive, slur-like, scam, or unsafe words/text, set "category" to "Other", set "explicit_cover_text" to true, and do not use the caption/tags to override it.
-8. If the cover image is unavailable or unreadable, fall back to the title/caption/tags.
-9. Extract a broad category, not a tiny detail. Examples: Fitness, Travel, Fashion, DIY, Tech, Education, Comedy, Music.
-10. Before suggesting a new category, compare it against every existing collection.
-11. If any existing collection is semantically similar, put that exact existing collection name in "category", unless rule 7 applies.
-12. Avoid creating too many collections. Only use "Other" if truly no signal exists from the title, description, URL, or hashtags combined.
-13. Return ONLY compact JSON with these keys: title, category, description, creator_name, tags, cover_topic, caption_topic, cover_caption_match, explicit_cover_text.
+3. If reel fits existing category → return that EXACT name
+4. If new topic → create short 1-2 word category (Title Case)
+5. If truly nothing to go on → return "Other"
+6. Reply with ONLY the category name. Nothing else.
 `;
 
   try {
-    const parts = [prompt];
-    const result = await model.generateContent(parts);
-    const category = matchExistingCollection(extractCategoryFromModelText(result.response.text()), collections) || 'Other';
-    console.info('[gemini] categorized reel', {
-      model: modelName,
-      category,
-      textOnly: true
-    });
-    return category;
+    const result = await model.generateContent(prompt);
+    const category = result.response.text().trim();
+    return category || 'Other';
   } catch (err) {
-    console.error('[gemini] categorization failed', { model: modelName, error: err.message });
+    console.error('[gemini] categorization failed', err.message);
     return 'Other';
   }
 }

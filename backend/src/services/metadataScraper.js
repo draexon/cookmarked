@@ -93,8 +93,18 @@ async function scrapeMetadata(url) {
     const $ = cheerio.load(data);
     const getMeta = (prop) => $(`meta[property="${prop}"]`).attr('content') || $(`meta[name="${prop}"]`).attr('content') || '';
     
-    const resTitle = getMeta('og:title') || $('title').text();
+    let resTitle = getMeta('og:title') || $('title').text();
+    let resDescription = getMeta('og:description');
     const resThumbnail = getMeta('og:image');
+    
+    // Scrub useless Instagram titles (like "Login • Instagram")
+    if (targetUrl.includes('instagram.com')) {
+      const cleanT = resTitle.toLowerCase().replace(/[^a-z]/g, '');
+      if (cleanT === 'login' || cleanT === 'instagram' || cleanT === 'logininstagram') {
+        resTitle = '';
+        resDescription = '';
+      }
+    }
     
     if (!resTitle && !resThumbnail) {
       throw new Error('No metadata found');
@@ -103,7 +113,7 @@ async function scrapeMetadata(url) {
     return {
       title: resTitle,
       thumbnail: resThumbnail,
-      description: getMeta('og:description')
+      description: resDescription
     };
   };
 
