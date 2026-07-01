@@ -72,6 +72,11 @@ function extractKeywordFromUrl(url) {
 }
 
 async function scrapeMetadata(url) {
+  // Instagram blocks all scraping — skip entirely to avoid wasting time
+  if (url && url.includes('instagram.com')) {
+    return { title: '', description: '', thumbnail: '', platform: 'instagram' };
+  }
+
   let matchedPlatform = null;
 
   for (const platform of STREAMING_PLATFORMS) {

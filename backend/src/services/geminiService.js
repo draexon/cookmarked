@@ -7,6 +7,11 @@ const modelName = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
 const model = genAI.getGenerativeModel({ model: modelName });
 
 async function categorizeReel({ url, title, description, existingCategories = [], existingCollections = [] }) {
+  // No signal at all — skip Gemini entirely
+  if (!title?.trim() && !description?.trim()) {
+    return 'Uncategorized';
+  }
+
   const collections = existingCollections.length > 0 ? existingCollections : existingCategories;
   const categoryList = collections.length > 0
     ? `User's existing categories: ${collections.join(', ')}`

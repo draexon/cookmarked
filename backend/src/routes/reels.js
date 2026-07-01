@@ -174,11 +174,19 @@ router.post('/reels', async (req, res, next) => {
 
     const inferredCategory = inferCategoryFromText(title, description, providedTitle);
     let category = normalizeCategory(providedCategory);
-    
-    const aiCategory = normalizeCategory(await categoryPromise);
-    category = !isOtherCategory(aiCategory)
-      ? aiCategory
-      : inferredCategory || category;
+    let needsCategory = false;
+
+    const rawAiCategory = await categoryPromise;
+    const aiCategory = normalizeCategory(rawAiCategory);
+
+    if (rawAiCategory === 'Uncategorized') {
+      needsCategory = true;
+      category = inferredCategory || 'Other';
+    } else {
+      category = !isOtherCategory(aiCategory)
+        ? aiCategory
+        : inferredCategory || category;
+    }
 
     if (collectionId) {
       const collection = db.prepare('SELECT id, name FROM collections WHERE id = ? AND user_id = ?')
@@ -233,7 +241,7 @@ router.post('/reels', async (req, res, next) => {
     `).run(...values);
 
     const reel = getReelForUser(result.lastInsertRowid, req.user.id);
-    return ok(res, normalizeReel(reel), 201);
+    return ok(res, { ...normalizeReel(reel), needsCategory }, 201);
   } catch (err) {
     return next(err);
   }
