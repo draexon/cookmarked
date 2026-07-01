@@ -71,10 +71,62 @@ function extractKeywordFromUrl(url) {
   return '';
 }
 
-async function scrapeMetadata(url) {
-  // Instagram blocks all scraping — skip entirely to avoid wasting time
-  if (url && url.includes('instagram.com')) {
+// --- Instagram-specific scraping ---
+const INSTAGRAM_UAS = [
+  'facebookexternalhit/1.1',
+  'Twitterbot/1.0',
+  'LinkedInBot/1.0',
+];
+
+function isInstagramLoginPage(title) {
+  if (!title) return true;
+  const clean = title.toLowerCase().replace(/[^a-z]/g, '');
+  return clean === 'login' || clean === 'instagram' || clean === 'logininstagram' || clean.includes('login');
+}
+
+async function attemptInstagramFetch(url, ua) {
+  const { data } = await axios.get(url, {
+    headers: { 'User-Agent': ua, 'Accept-Language': 'en-US,en;q=0.9' },
+    timeout: 3000,
+  });
+  const $ = cheerio.load(data);
+  const getMeta = (prop) =>
+    $(`meta[property="${prop}"]`).attr('content') || $(`meta[name="${prop}"]`).attr('content') || '';
+
+  const title = getMeta('og:title') || $('title').text();
+  const description = getMeta('og:description');
+  const thumbnail = getMeta('og:image');
+
+  if (isInstagramLoginPage(title)) {
+    throw new Error('Hit Instagram login wall');
+  }
+  if (!title && !thumbnail) {
+    throw new Error('No metadata found');
+  }
+  return { title, description, thumbnail };
+}
+
+async function scrapeInstagram(url) {
+  try {
+    // Promise.any: first UA that returns real data wins
+    const result = await Promise.any(INSTAGRAM_UAS.map((ua) => attemptInstagramFetch(url, ua)));
+    return {
+      title: result.title || '',
+      description: result.description || '',
+      thumbnail: result.thumbnail && !isFoodOrUnrelated(result.thumbnail) ? result.thumbnail : '',
+      platform: 'instagram',
+    };
+  } catch (e) {
+    // All 3 UAs hit the login wall or timed out — let user manually name it
     return { title: '', description: '', thumbnail: '', platform: 'instagram' };
+  }
+}
+
+
+async function scrapeMetadata(url) {
+  // Delegate Instagram URLs to dedicated scraper with social-bot UAs
+  if (url && url.includes('instagram.com')) {
+    return scrapeInstagram(url);
   }
 
   let matchedPlatform = null;
