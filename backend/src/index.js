@@ -14,9 +14,12 @@ const instagramWebhook = require('./routes/instagramWebhook');
 const app = express();
 
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://allmarked.vercel.app',
+    'https://cookmarked-nine.vercel.app'
+  ],
   credentials: true
 }));
 

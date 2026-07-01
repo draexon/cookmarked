@@ -71,7 +71,7 @@ async function request<T>(path: string, options: RequestInit = {}, auth = true):
     }
     return body as T;
   } catch (error) {
-    throw error instanceof Error ? error : new Error('Unable to reach the CookMarked API');
+    throw error instanceof Error ? error : new Error('Unable to reach the AllMarked API');
   }
 }
 

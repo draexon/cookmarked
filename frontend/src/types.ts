@@ -45,7 +45,7 @@ export interface NotificationSettings {
   collectionUpdates: boolean;
 }
 
-export interface CookMarkedNotification {
+export interface AllMarkedNotification {
   id: string;
   title: string;
   message: string;

@@ -366,7 +366,7 @@ export default function SaveReelModal({
             </div>
 
             <p className="text-xs text-on-surface-muted/50 mt-6 italic font-sans font-medium">
-              Powered by the CookMarked API
+              Powered by the AllMarked API
             </p>
           </div>
         )}

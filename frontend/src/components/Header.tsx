@@ -45,7 +45,7 @@ export default function Header({
             </p>
           )}
           <h1 className="font-display font-extrabold text-xl text-primary tracking-tight leading-none cursor-pointer" onClick={onProfileClick}>
-            CookMarked
+            AllMarked
           </h1>
         </div>
       </div>

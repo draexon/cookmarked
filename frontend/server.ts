@@ -15,7 +15,7 @@ async function startServer() {
 
   // Safe checks for configuration
   const hasApiKey = !!process.env.GEMINI_API_KEY;
-  console.log("[CookMarked Server] Checking Gemini key configuration:", hasApiKey ? "AVAILABLE" : "MISSING");
+  console.log("[AllMarked Server] Checking Gemini key configuration:", hasApiKey ? "AVAILABLE" : "MISSING");
 
   // Lazy client accessor to avoid crashing on startup
   const getGeminiClient = () => {
@@ -45,19 +45,19 @@ async function startServer() {
   // Dynamic Parse Endpoint utilizing Google Gemini AI
   app.post("/api/gemini/parse", async (req, res) => {
     const { url = '', titleInput = '' } = req.body;
-    console.log("[CookMarked Server] Parsing link request received:", { url, titleInput });
+    console.log("[AllMarked Server] Parsing link request received:", { url, titleInput });
 
     const ai = getGeminiClient();
 
     if (!ai) {
-      console.warn("[CookMarked Server] Gemini API key missing or unconfigured. Activating premium heuristic parser.");
+      console.warn("[AllMarked Server] Gemini API key missing or unconfigured. Activating premium heuristic parser.");
       // Instantly return smart customized default
       return res.json(ruleBasedFallback(url, titleInput));
     }
 
     try {
       const prompt = `
-        You are an expert culinary AI classifier for CookMarked—a premium reel organizer platform.
+        You are an expert AI classifier for AllMarked—a premium bookmark and organizer platform.
         The user has pasted a link to a recipe cooking video.
         URL: "${url}"
         User Context Hint (e.g. video search title / text): "${titleInput}"
@@ -105,12 +105,12 @@ async function startServer() {
         throw new Error("Empty text returned from Google GenAI model.");
       }
 
-      console.log("[CookMarked Server] Gemini parsed response text:", text);
+      console.log("[AllMarked Server] Gemini parsed response text:", text);
       const parsedRecipe = JSON.parse(text.trim());
       res.json(parsedRecipe);
 
     } catch (err) {
-      console.error("[CookMarked Server] GenAI API failed. Falling back to rule-based parsing engine.", err);
+      console.error("[AllMarked Server] GenAI API failed. Falling back to rule-based parsing engine.", err);
       res.json(ruleBasedFallback(url, titleInput));
     }
   });
@@ -183,18 +183,18 @@ async function startServer() {
       appType: "spa",
     });
     app.use(vite.middlewares);
-    console.log("[CookMarked Server] Vite Development middleware integrated successfully.");
+    console.log("[AllMarked Server] Vite Development middleware integrated successfully.");
   } else {
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
     app.get("*", (req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
-    console.log("[CookMarked Server] Serving static production build at:", distPath);
+    console.log("[AllMarked Server] Serving static production build at:", distPath);
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`[CookMarked Server] Running and listening on http://0.0.0.0:${PORT}`);
+    console.log(`[AllMarked Server] Running and listening on http://0.0.0.0:${PORT}`);
   });
 }
 

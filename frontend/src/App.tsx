@@ -8,7 +8,7 @@ import {
   Home, FolderHeart, User, Trash2, MoreVertical
 } from 'lucide-react';
 
-import { Reel, Collection, UserProfile, CookMarkedNotification } from './types';
+import { Reel, Collection, UserProfile, AllMarkedNotification } from './types';
 import { 
   INITIAL_PLATFORMS, 
   INITIAL_NOTIFICATION_SETTINGS, 
@@ -22,6 +22,8 @@ import {
   toggleReelFavorite,
   updateCollection,
   deleteReel,
+  updatePassword,
+  saveReel,
 } from './api/reelService';
 
 import { useAuth, SignedIn, SignedOut, SignIn, UserButton } from '@clerk/clerk-react';
@@ -62,7 +64,7 @@ function DesktopSidebar({
         className="text-left px-3 pb-6 focus:outline-none cursor-pointer"
       >
         <h1 className="font-display font-extrabold text-2xl text-primary tracking-tight leading-none">
-          CookMarked
+          AllMarked
         </h1>
         <p className="mt-2 text-[11px] font-semibold text-on-surface-muted/50 leading-relaxed">
           Save reels from anywhere, about anything.
@@ -170,7 +172,7 @@ export default function App() {
   const [notifications, setNotifications] = useState(INITIAL_NOTIFICATION_SETTINGS);
   
   // Real-time notification lists
-  const [appNotifications, setAppNotifications] = useState<CookMarkedNotification[]>(INITIAL_NOTIFICATIONS);
+  const [appNotifications, setAppNotifications] = useState<AllMarkedNotification[]>(INITIAL_NOTIFICATIONS);
   const [notificationFilter, setNotificationFilter] = useState<'all' | 'alert' | 'trend' | 'connection'>('all');
 
   // Collection selection in the home Explore shelf
@@ -264,6 +266,17 @@ export default function App() {
   useEffect(() => {
     if (isLoaded && isSignedIn) {
       void loadLibrary();
+      
+      // Auto-save pending share from PWA target
+      const pendingShareUrl = localStorage.getItem('pending_share');
+      if (pendingShareUrl) {
+        localStorage.removeItem('pending_share');
+        saveReel({ url: pendingShareUrl }).then(() => {
+          setToastMessage('Link saved successfully! ✅');
+          setTimeout(() => setToastMessage(''), 3000);
+          void loadLibrary();
+        }).catch(err => console.error('Auto-save failed:', err));
+      }
     } else if (isLoaded && !isSignedIn) {
       setIsLoading(false);
       setCurrentUser(null);

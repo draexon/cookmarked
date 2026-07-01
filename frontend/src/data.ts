@@ -1,8 +1,8 @@
-import { Reel, Collection, UserProfile, PlatformConnection, NotificationSettings, CookMarkedNotification } from './types';
+import { Reel, Collection, UserProfile, PlatformConnection, NotificationSettings, AllMarkedNotification } from './types';
 
 export const INITIAL_USER_PROFILE: UserProfile = {
   name: 'Maya Rivera',
-  email: 'maya@cookmarked.com',
+  email: 'maya@allmarked.com',
   avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80',
   totalReels: 128,
   totalCollections: 12,
@@ -249,7 +249,7 @@ export const RECENT_LINKS_MOCK = [
   }
 ];
 
-export const INITIAL_NOTIFICATIONS: CookMarkedNotification[] = [
+export const INITIAL_NOTIFICATIONS: AllMarkedNotification[] = [
   {
     id: 'n1',
     title: 'Trend Alert: Creator Tools',
@@ -280,7 +280,7 @@ export const INITIAL_NOTIFICATIONS: CookMarkedNotification[] = [
   {
     id: 'n4',
     title: 'Platform Connection Active',
-    message: 'Your TikTok account @maya.finds has successfully synced with CookMarked.',
+    message: 'Your TikTok account @maya.finds has successfully synced with AllMarked.',
     time: '1 day ago',
     isRead: true,
     type: 'connection'
