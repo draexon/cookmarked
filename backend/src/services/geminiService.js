@@ -127,15 +127,25 @@ ${collectionList}
 Rules:
 1. If a thumbnail image is attached, analyze the reel cover first. Treat visible cover content and visible cover text as the primary source.
 2. Use the title, caption, hashtags, URL text, and tags only as secondary evidence.
-3. If the cover topic and caption/tag topic clearly match, use that shared broad category.
-4. If the caption/tags conflict with the cover, ignore the caption/tags and choose the category from the cover image.
-5. If the cover contains explicit, adult, sexual, violent, hateful, abusive, slur-like, scam, or unsafe words/text, set "category" to "Other", set "explicit_cover_text" to true, and do not use the caption/tags to override it.
-6. If the cover image is unavailable or unreadable, fall back to the title/caption/tags.
-7. Extract a broad category, not a tiny detail. Examples: Fitness, Travel, Fashion, DIY, Tech, Education, Comedy, Music.
-8. Before suggesting a new category, compare it against every existing collection.
-9. If any existing collection is semantically similar, put that exact existing collection name in "category", unless rule 5 applies.
-10. Avoid creating too many collections. Use "Other" when there is no useful cover, title, caption, tag, or URL detail.
-11. Return ONLY compact JSON with these keys: title, category, description, creator_name, tags, cover_topic, caption_topic, cover_caption_match, explicit_cover_text.
+3. If the title is generic or unhelpful (e.g., contains only "reel", "video", "post", or is empty), focus heavily on the URL structure and extract any hashtags from the description.
+4. If the title is generic or unhelpful, look for hashtags in the description. Hashtags are the most reliable signal.
+   #skating/#skate → Sports
+   #food/#recipe/#cooking → Food
+   #travel/#wanderlust → Travel
+   #cars/#automotive → Cars
+   #fitness/#gym/#workout → Fitness
+   #comedy/#funny/#memes → Comedy
+   #fashion/#ootd → Fashion
+   #tech/#coding → Technology
+5. If the cover topic and caption/tag topic clearly match, use that shared broad category.
+6. If the caption/tags conflict with the cover, ignore the caption/tags and choose the category from the cover image.
+7. If the cover contains explicit, adult, sexual, violent, hateful, abusive, slur-like, scam, or unsafe words/text, set "category" to "Other", set "explicit_cover_text" to true, and do not use the caption/tags to override it.
+8. If the cover image is unavailable or unreadable, fall back to the title/caption/tags.
+9. Extract a broad category, not a tiny detail. Examples: Fitness, Travel, Fashion, DIY, Tech, Education, Comedy, Music.
+10. Before suggesting a new category, compare it against every existing collection.
+11. If any existing collection is semantically similar, put that exact existing collection name in "category", unless rule 7 applies.
+12. Avoid creating too many collections. Only use "Other" if truly no signal exists from the title, description, URL, or hashtags combined.
+13. Return ONLY compact JSON with these keys: title, category, description, creator_name, tags, cover_topic, caption_topic, cover_caption_match, explicit_cover_text.
 `;
 
   try {
