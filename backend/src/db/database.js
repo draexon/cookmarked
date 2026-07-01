@@ -68,6 +68,7 @@ ensureColumn('collections', 'last_opened_at', 'DATETIME');
 
 ensureColumn('reels', 'collection_id', 'INTEGER');
 ensureColumn('reels', 'category', 'TEXT');
+ensureColumn('reels', 'description', 'TEXT');
 ensureColumn('reels', 'note', 'TEXT');
 ensureColumn('reels', 'is_favorite', 'INTEGER DEFAULT 0');
 ensureColumn('reels', 'status', "TEXT DEFAULT 'saved'");
