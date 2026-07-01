@@ -5,7 +5,8 @@ import {
   Settings, Key, Smartphone, ToggleLeft, ToggleRight, LogOut, Heart, 
   MapPin, Clock, Tag, PlusCircle, Check, Eye, EyeOff, Bell, Pencil,
   ArrowLeft,
-  Home, FolderHeart, User, Trash2, MoreVertical
+  Home, FolderHeart, User, Trash2, MoreVertical, Instagram as InstagramIcon,
+  Youtube, Music2, ImageIcon
 } from 'lucide-react';
 
 import { Reel, Collection, UserProfile, AllMarkedNotification } from './types';
@@ -155,6 +156,51 @@ function ExpandableCaption({
   );
 }
 
+function PlatformPlaceholder({ platform, className = '' }: { platform: Reel['platform']; className?: string }) {
+  const Icon = platform === 'Instagram'
+    ? InstagramIcon
+    : platform === 'YouTube'
+      ? Youtube
+      : platform === 'TikTok'
+        ? Music2
+        : ImageIcon;
+
+  return (
+    <div
+      className={`w-full h-full bg-neutral-100 flex items-center justify-center ${className}`}
+      aria-label={`No thumbnail available for ${platform}`}
+    >
+      <div className="w-12 h-12 rounded-full bg-white/85 border border-neutral-200 text-neutral-500 flex items-center justify-center shadow-sm">
+        <Icon className="w-6 h-6" />
+      </div>
+    </div>
+  );
+}
+
+function ReelThumbnail({
+  reel,
+  className = 'w-full h-full object-cover transition-transform duration-300 group-hover:scale-105',
+  placeholderClassName = '',
+}: {
+  reel: Reel;
+  className?: string;
+  placeholderClassName?: string;
+}) {
+  const imageUrl = reel.imageUrl?.trim();
+
+  if (!imageUrl) {
+    return <PlatformPlaceholder platform={reel.platform} className={placeholderClassName} />;
+  }
+
+  return (
+    <img
+      src={imageUrl}
+      alt={reel.title}
+      className={className}
+    />
+  );
+}
+
 export default function App() {
   const { isLoaded, isSignedIn } = useAuth();
   // Login Session
@@ -297,9 +343,21 @@ export default function App() {
   };
 
   // Save a new reel dynamically
-  const handleSaveReel = (_newReel: Reel) => {
+  const handleSaveReel = (newReel: Reel) => {
     setShowAddModal(false);
     setSaveTargetCollectionId(null);
+    setReels((previous) => {
+      const exists = previous.some((reel) => reel.id === newReel.id);
+      if (exists) {
+        return previous.map((reel) => reel.id === newReel.id ? newReel : reel);
+      }
+      return [newReel, ...previous];
+    });
+    setCurrentUser((user) => user ? {
+      ...user,
+      totalReels: reels.some((reel) => reel.id === newReel.id) ? user.totalReels : user.totalReels + 1,
+      totalFavorites: user.totalFavorites + (newReel.isFavorite && !reels.some((reel) => reel.id === newReel.id && reel.isFavorite) ? 1 : 0),
+    } : user);
     void loadLibrary();
   };
 
@@ -614,11 +672,7 @@ export default function App() {
                         </motion.button>
 
                         <div className="h-32 bg-surface-low relative overflow-hidden">
-                          <img
-                            src={reel.imageUrl}
-                            alt={reel.title}
-                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                          />
+                          <ReelThumbnail reel={reel} />
                           <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-[250ms] ease-in-out pointer-events-none">
                             <div className="w-10 h-10 rounded-full bg-primary-orange text-white flex items-center justify-center shadow-lg">
                               <Play className="w-5 h-5 fill-white translate-x-0.5" />
@@ -1082,9 +1136,8 @@ export default function App() {
                             className="bg-white rounded-2xl overflow-hidden border border-brand-outline-variant/10 shadow-sm relative group cursor-pointer"
                           >
                             <div className="h-56 bg-[#FAFAF8] relative overflow-hidden">
-                              <img
-                                src={mainReel.imageUrl}
-                                alt={mainReel.title}
+                              <ReelThumbnail
+                                reel={mainReel}
                                 className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300"
                               />
                               
@@ -1171,9 +1224,8 @@ export default function App() {
                                     <Trash2 className="w-3 h-3" />
                                   </motion.button>
 
-                                  <img
-                                    src={reel.imageUrl}
-                                    alt={reel.title}
+                                  <ReelThumbnail
+                                    reel={reel}
                                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ease-in-out"
                                   />
                                   <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-[250ms] ease-in-out pointer-events-none">
@@ -1308,11 +1360,7 @@ export default function App() {
                       </motion.button>
 
                       <div className="h-32 bg-surface-low relative overflow-hidden">
-                          <img
-                            src={reel.imageUrl}
-                            alt={reel.title}
-                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                          />
+                          <ReelThumbnail reel={reel} />
                           <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-[250ms] ease-in-out pointer-events-none">
                             <div className="w-10 h-10 rounded-full bg-primary-orange text-white flex items-center justify-center shadow-lg">
                               <Play className="w-5 h-5 fill-white translate-x-0.5" />
@@ -1867,10 +1915,10 @@ export default function App() {
                   )}
                 </div>
 
-                <img
-                  src={spotlightReel.imageUrl}
-                  alt={spotlightReel.title}
+                <ReelThumbnail
+                  reel={spotlightReel}
                   className="w-full h-full object-cover opacity-60 filter saturate-110"
+                  placeholderClassName="opacity-75"
                 />
                 {canNavigateSpotlight && (
                   <>

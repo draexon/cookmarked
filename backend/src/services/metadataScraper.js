@@ -84,6 +84,14 @@ function isInstagramLoginPage(title) {
   return clean === 'login' || clean === 'instagram' || clean === 'logininstagram' || clean.includes('login');
 }
 
+function getInstagramFallbackTitle(url) {
+  const match = String(url || '').match(/instagram\.com\/([^/]+)\/(reel|p)\//i);
+  if (match && match[1]) {
+    return `Reel by @${match[1]}`;
+  }
+  return 'Instagram Reel';
+}
+
 async function attemptInstagramFetch(url, ua) {
   const { data } = await axios.get(url, {
     headers: { 'User-Agent': ua, 'Accept-Language': 'en-US,en;q=0.9' },
@@ -111,14 +119,14 @@ async function scrapeInstagram(url) {
     // Promise.any: first UA that returns real data wins
     const result = await Promise.any(INSTAGRAM_UAS.map((ua) => attemptInstagramFetch(url, ua)));
     return {
-      title: result.title || '',
+      title: result.title || getInstagramFallbackTitle(url),
       description: result.description || '',
-      thumbnail: result.thumbnail && !isFoodOrUnrelated(result.thumbnail) ? result.thumbnail : '',
+      thumbnail: null,
       platform: 'instagram',
     };
   } catch (e) {
     // All 3 UAs hit the login wall or timed out — let user manually name it
-    return { title: '', description: '', thumbnail: '', platform: 'instagram' };
+    return { title: getInstagramFallbackTitle(url), description: '', thumbnail: null, platform: 'instagram' };
   }
 }
 

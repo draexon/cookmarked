@@ -2,7 +2,25 @@ import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { X, Link, Scan, CheckCircle2, Circle, AlertCircle, ArrowRight, Plus } from 'lucide-react';
 import { Collection, Reel, Platform } from '../types';
-import { saveReel } from '../api/reelService';
+import { saveReel, updateReelCategory } from '../api/reelService';
+
+const QUICK_CATEGORIES = [
+  'Food',
+  'Travel',
+  'Fitness',
+  'Comedy',
+  'Fashion',
+  'Cars',
+  'Tech',
+  'Music',
+  'Education',
+  'Other',
+];
+
+function shouldAskForCategory(reel: Reel) {
+  const category = reel.category.trim().toLowerCase();
+  return reel.platform === 'Instagram' || category === 'other' || category === 'uncategorized';
+}
 
 interface SaveReelModalProps {
   onClose: () => void;
@@ -27,7 +45,9 @@ export default function SaveReelModal({
   const [showNewCollection, setShowNewCollection] = useState(false);
   const [newCollectionName, setNewCollectionName] = useState('');
   const [creatingCollection, setCreatingCollection] = useState(false);
-  const [step, setStep] = useState<'input' | 'saving'>('input');
+  const [step, setStep] = useState<'input' | 'saving' | 'category'>('input');
+  const [savedReel, setSavedReel] = useState<Reel | null>(null);
+  const [categorySaving, setCategorySaving] = useState('');
   
   // Saving stages
   const [stage, setStage] = useState<1 | 2 | 3>(1);
@@ -93,10 +113,43 @@ export default function SaveReelModal({
       const finalReel = await pendingReel;
       setStage(3);
       await new Promise((resolve) => setTimeout(resolve, 300));
-      onSave(finalReel);
+      if (shouldAskForCategory(finalReel)) {
+        setSavedReel(finalReel);
+        setStep('category');
+      } else {
+        onSave(finalReel);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to save this reel.');
       setStep('input');
+    }
+  };
+
+  const finishWithSavedReel = () => {
+    if (savedReel) {
+      onSave(savedReel);
+    } else {
+      onClose();
+    }
+  };
+
+  const handleCategorySelect = async (category: string) => {
+    if (!savedReel || categorySaving) return;
+
+    const previousReel = savedReel;
+    const optimisticReel = { ...savedReel, category };
+    setSavedReel(optimisticReel);
+    setCategorySaving(category);
+    setError('');
+
+    try {
+      const updatedReel = await updateReelCategory(savedReel.id, category);
+      onSave(updatedReel);
+    } catch (err) {
+      setSavedReel(previousReel);
+      setError(err instanceof Error ? err.message : 'Unable to update this category.');
+    } finally {
+      setCategorySaving('');
     }
   };
 
@@ -109,7 +162,7 @@ export default function SaveReelModal({
       transition={{ duration: 0.3, ease: 'easeInOut' }}
     >
       {/* Tap on backdrop to close */}
-      <div className="absolute inset-0" onClick={onClose} />
+      <div className="absolute inset-0" onClick={step === 'category' ? finishWithSavedReel : onClose} />
 
       <motion.div
         className="relative bg-app-bg w-full max-w-md md:max-w-[480px] rounded-t-3xl md:rounded-3xl shadow-[0_-10px_40px_rgba(28,27,27,0.15)] overflow-hidden z-10"
@@ -253,8 +306,12 @@ export default function SaveReelModal({
                       onClick={() => handleQuickPreset(preset.url)}
                       className="flex items-center gap-3 p-2 text-left bg-white rounded-xl border border-brand-outline-variant/10 hover:border-primary-orange/40 hover:bg-orange-50/25 active:scale-95 transition-all duration-200 ease-in-out shadow-sm focus:outline-none cursor-pointer"
                     >
-                      <div className="w-10 h-10 rounded-lg overflow-hidden bg-surface-low flex-shrink-0">
-                        <img src={preset.imageUrl} alt="" className="w-full h-full object-cover" />
+                      <div className="w-10 h-10 rounded-lg overflow-hidden bg-neutral-100 flex-shrink-0 flex items-center justify-center text-neutral-500">
+                        {preset.imageUrl ? (
+                          <img src={preset.imageUrl} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <Scan className="w-4 h-4" />
+                        )}
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="text-[10px] uppercase font-bold text-primary-orange tracking-wide">
@@ -285,7 +342,7 @@ export default function SaveReelModal({
               </button>
             </div>
           </div>
-        ) : (
+        ) : step === 'saving' ? (
           /* SAVING PROGRESS SCREEN (Screen 3) */
           <div className="p-6 pb-8 text-center">
             {/* Header row */}
@@ -368,6 +425,69 @@ export default function SaveReelModal({
             <p className="text-xs text-on-surface-muted/50 mt-6 italic font-sans font-medium">
               Powered by the AllMarked API
             </p>
+          </div>
+        ) : (
+          <div className="p-6 pb-7">
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-primary-container/50 text-primary-orange flex items-center justify-center">
+                  <CheckCircle2 className="w-6 h-6" />
+                </div>
+                <div>
+                  <h2 className="font-display font-extrabold text-xl text-on-surface tracking-tight leading-tight">
+                    Saved successfully
+                  </h2>
+                  <p className="text-xs text-on-surface-muted/55 mt-0.5 font-semibold">
+                    {savedReel?.title || 'Your reel is in the library'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={finishWithSavedReel}
+                className="text-on-surface-muted/60 hover:text-on-surface p-1 rounded-full hover:bg-surface-low cursor-pointer transition-colors"
+                aria-label="Close"
+              >
+                <X className="w-5 h-5 stroke-[2.5]" />
+              </button>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-brand-outline-variant/12 p-4 shadow-sm">
+              <h3 className="font-display font-extrabold text-base text-on-surface tracking-tight">
+                What's this reel about?
+              </h3>
+              <p className="text-xs text-on-surface-muted/55 mt-1">
+                Pick a category so it is easier to find later.
+              </p>
+
+              {error && (
+                <div className="mt-3 bg-red-50 border border-red-200 p-3 rounded-lg text-xs text-red-700">
+                  {error}
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-4">
+                {QUICK_CATEGORIES.map((category) => {
+                  const isSaving = categorySaving === category;
+                  const isSelected = savedReel?.category === category;
+
+                  return (
+                    <button
+                      key={category}
+                      type="button"
+                      disabled={Boolean(categorySaving)}
+                      onClick={() => handleCategorySelect(category)}
+                      className={`h-10 rounded-xl border text-xs font-display font-extrabold transition-all active:scale-95 cursor-pointer disabled:cursor-wait ${
+                        isSelected
+                          ? 'bg-primary-orange text-white border-primary-orange shadow-sm'
+                          : 'bg-[#FAFAF8] text-on-surface border-brand-outline-variant/15 hover:border-primary-orange/45 hover:bg-orange-50/40'
+                      }`}
+                    >
+                      {isSaving ? 'Saving...' : category}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         )}
 

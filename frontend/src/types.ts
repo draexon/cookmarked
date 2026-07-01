@@ -5,7 +5,7 @@ export interface Reel {
   title: string;
   description?: string;
   platform: Platform;
-  imageUrl: string;
+  imageUrl: string | null;
   category: string; // e.g. "Fitness", "Travel", "Fashion", "DIY", "Tech"
   duration: string; // e.g. "15 MIN", "30 MIN"
   url: string;

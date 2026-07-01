@@ -364,6 +364,31 @@ router.patch('/reels/:id/note', (req, res, next) => {
   }
 });
 
+router.patch('/reels/:id', (req, res, next) => {
+  try {
+    const reel = getReelForUser(req.params.id, req.user.id);
+    if (!reel) {
+      return res.status(404).json({ success: false, message: 'Reel not found' });
+    }
+
+    const hasCategory = Object.prototype.hasOwnProperty.call(req.body || {}, 'category');
+    if (!hasCategory) {
+      return res.status(400).json({ success: false, message: 'Category is required' });
+    }
+
+    const category = normalizeCategory(req.body.category);
+    const collection = getOrCreateCollectionForCategory(req.user.id, category);
+
+    db.prepare('UPDATE reels SET category = ?, collection_id = ? WHERE id = ? AND user_id = ?')
+      .run(category, collection.id, reel.id, req.user.id);
+
+    const updated = getReelForUser(reel.id, req.user.id);
+    return ok(res, normalizeReel(updated));
+  } catch (err) {
+    return next(err);
+  }
+});
+
 function toggleWatchedStatus(req, res, next) {
   try {
     const reel = getReelForUser(req.params.id, req.user.id);

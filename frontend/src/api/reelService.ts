@@ -94,14 +94,15 @@ function toPlatform(value: string | null): Platform {
   return platforms[normalized] || 'Other';
 }
 
-function toImageUrl(thumbnail: string | null): string {
-  if (!thumbnail) {
-    return 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=500&q=80';
+function toImageUrl(thumbnail: string | null): string | null {
+  const normalized = thumbnail?.trim();
+  if (!normalized) {
+    return null;
   }
-  if (thumbnail.startsWith('/uploads/')) {
-    return `${BACKEND_BASE}${thumbnail}`;
+  if (normalized.startsWith('/uploads/')) {
+    return `${BACKEND_BASE}${normalized}`;
   }
-  return thumbnail;
+  return normalized;
 }
 
 export function mapReel(reel: BackendReel): Reel {
@@ -212,6 +213,13 @@ export function updateReelNote(id: string, note: string) {
   return request<ApiEnvelope<BackendReel>>(`/reels/${encodeURIComponent(id)}/note`, {
     method: 'PATCH',
     body: JSON.stringify({ note }),
+  }).then((result) => mapReel(result.data));
+}
+
+export function updateReelCategory(id: string, category: string) {
+  return request<ApiEnvelope<BackendReel>>(`/reels/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ category }),
   }).then((result) => mapReel(result.data));
 }
 
