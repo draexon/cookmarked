@@ -22,6 +22,7 @@ interface BackendStats {
 interface BackendReel {
   id: number;
   title: string | null;
+  description: string | null;
   platform: string | null;
   thumbnail: string | null;
   category: string | null;
@@ -93,12 +94,23 @@ function toPlatform(value: string | null): Platform {
   return platforms[normalized] || 'Other';
 }
 
+function toImageUrl(thumbnail: string | null): string {
+  if (!thumbnail) {
+    return 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=500&q=80';
+  }
+  if (thumbnail.startsWith('/uploads/')) {
+    return `${BACKEND_BASE}${thumbnail}`;
+  }
+  return thumbnail;
+}
+
 export function mapReel(reel: BackendReel): Reel {
   return {
     id: String(reel.id),
     title: reel.title || 'Untitled Reel',
+    description: reel.description || undefined,
     platform: toPlatform(reel.platform),
-    imageUrl: reel.thumbnail || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=500&q=80',
+    imageUrl: toImageUrl(reel.thumbnail),
     category: reel.category || 'Other',
     duration: 'Saved Reel',
     url: reel.url,

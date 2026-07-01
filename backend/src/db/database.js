@@ -42,6 +42,7 @@ db.exec(`
     category_id INTEGER NOT NULL,
     url TEXT NOT NULL,
     title TEXT,
+    description TEXT,
     thumbnail TEXT,
     platform TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -69,6 +70,7 @@ ensureColumn('collections', 'last_opened_at', 'DATETIME');
 ensureColumn('reels', 'collection_id', 'INTEGER');
 ensureColumn('reels', 'category', 'TEXT');
 ensureColumn('reels', 'description', 'TEXT');
+console.log('[db] reels.description column ensured');
 ensureColumn('reels', 'note', 'TEXT');
 ensureColumn('reels', 'is_favorite', 'INTEGER DEFAULT 0');
 ensureColumn('reels', 'status', "TEXT DEFAULT 'saved'");
@@ -97,6 +99,7 @@ if (catIdCol && catIdCol.notnull === 1) {
       collection_id INTEGER,
       url         TEXT NOT NULL,
       title       TEXT,
+      description TEXT,
       thumbnail   TEXT,
       platform    TEXT,
       category    TEXT,
@@ -109,7 +112,7 @@ if (catIdCol && catIdCol.notnull === 1) {
     );
     INSERT INTO reels_new SELECT
       id, user_id, category_id, collection_id, url,
-      title, thumbnail, platform, category, note,
+      title, description, thumbnail, platform, category, note,
       is_favorite, status, is_watched, created_at
     FROM reels;
     DROP TABLE reels;

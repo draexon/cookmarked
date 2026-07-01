@@ -3,7 +3,7 @@ const { geminiApiKey } = require('../config');
 
 const genAI = new GoogleGenerativeAI(geminiApiKey);
 // Fallback to flash if no env var, just in case
-const modelName = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+const modelName = process.env.GEMINI_MODEL || 'gemini-flash-latest';
 const model = genAI.getGenerativeModel({ model: modelName });
 
 async function categorizeReel({ url, title, description, existingCategories = [], existingCollections = [] }) {

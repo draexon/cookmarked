@@ -4,6 +4,7 @@ const { db } = require('../db/database');
 const { scrapeMetadata } = require('../services/metadataScraper');
 const { categorizeReel } = require('../services/geminiService');
 const { detectPlatform } = require('../services/urlExtractor');
+const { downloadAndSaveThumbnail } = require('../services/thumbnailDownloader');
 
 const router = express.Router();
 
@@ -159,6 +160,11 @@ router.post('/reels', async (req, res, next) => {
     const description = scraped.description || '';
     const thumbnail = scraped.thumbnail || providedThumbnail || null;
     const platform = detectPlatform(url);
+    let finalThumbnail = thumbnail;
+    if (thumbnail && thumbnail.startsWith('http')) {
+      const localPath = await downloadAndSaveThumbnail(thumbnail, platform);
+      if (localPath) finalThumbnail = localPath;
+    }
 
     if (!categoryPromise) {
       categoryPromise = categorizeReel({
@@ -221,7 +227,7 @@ router.post('/reels', async (req, res, next) => {
       collectionId,
       url,
       title,
-      thumbnail,
+      finalThumbnail,
       description || null,
       platform,
       category,

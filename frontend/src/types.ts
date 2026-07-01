@@ -3,6 +3,7 @@ export type Platform = 'Instagram' | 'TikTok' | 'YouTube' | 'Pinterest' | 'Faceb
 export interface Reel {
   id: string;
   title: string;
+  description?: string;
   platform: Platform;
   imageUrl: string;
   category: string; // e.g. "Fitness", "Travel", "Fashion", "DIY", "Tech"

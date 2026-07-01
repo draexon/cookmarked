@@ -637,6 +637,11 @@ export default function App() {
                           <h4 className="font-display font-bold text-xs.5 text-on-surface caption-clamp-2 mt-1">
                             {reel.title}
                           </h4>
+                          {reel.description && (
+                            <p className="text-[10.5px] text-on-surface-muted/60 font-sans leading-snug line-clamp-2 mt-1">
+                              {reel.description}
+                            </p>
+                          )}
                           <span className="inline-flex items-center gap-1 text-[9.5px] text-on-surface-muted/50 font-mono font-medium mt-2">
                             <Clock className="w-2.5 h-2.5" />
                             {reel.duration}
