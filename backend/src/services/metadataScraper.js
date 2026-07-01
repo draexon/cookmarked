@@ -86,32 +86,35 @@ async function scrapeMetadata(url) {
   let description = '';
 
   const attemptFetch = async (targetUrl, ua, lang = 'en-US,en;q=0.9') => {
-    try {
-      const { data } = await axios.get(targetUrl, {
-        headers: { 'User-Agent': ua, 'Accept-Language': lang },
-        timeout: 5000
-      });
-      const $ = cheerio.load(data);
-      const getMeta = (prop) => $(`meta[property="${prop}"]`).attr('content') || $(`meta[name="${prop}"]`).attr('content') || '';
-      return {
-        title: getMeta('og:title') || $('title').text(),
-        thumbnail: getMeta('og:image'),
-        description: getMeta('og:description')
-      };
-    } catch (e) {
-      return null;
+    const { data } = await axios.get(targetUrl, {
+      headers: { 'User-Agent': ua, 'Accept-Language': lang },
+      timeout: 3000
+    });
+    const $ = cheerio.load(data);
+    const getMeta = (prop) => $(`meta[property="${prop}"]`).attr('content') || $(`meta[name="${prop}"]`).attr('content') || '';
+    
+    const resTitle = getMeta('og:title') || $('title').text();
+    const resThumbnail = getMeta('og:image');
+    
+    if (!resTitle && !resThumbnail) {
+      throw new Error('No metadata found');
     }
+    
+    return {
+      title: resTitle,
+      thumbnail: resThumbnail,
+      description: getMeta('og:description')
+    };
   };
 
-  // Strategies 1 & 2
-  for (const ua of STRATEGY_UAS) {
-    const res = await attemptFetch(url, ua);
-    if (res) {
-      if (res.title && !title) title = res.title;
-      if (res.thumbnail && !isFoodOrUnrelated(res.thumbnail) && !thumbnail) thumbnail = res.thumbnail;
-      if (res.description && !description) description = res.description;
-    }
-    if (title && thumbnail) break; // Break early if both found
+  // Strategies 1 & 2 - Run in parallel and take first successful result
+  try {
+    const res = await Promise.any(STRATEGY_UAS.map(ua => attemptFetch(url, ua)));
+    if (res.title) title = res.title;
+    if (res.thumbnail && !isFoodOrUnrelated(res.thumbnail)) thumbnail = res.thumbnail;
+    if (res.description) description = res.description;
+  } catch (e) {
+    // All attempts failed
   }
 
   // Strategy 3: Amazon ASIN
@@ -119,16 +122,18 @@ async function scrapeMetadata(url) {
     const match = url.match(/(?:dp\/|detail\/)([A-Z0-9]{10})/i);
     if (match && match[1]) {
       const asinUrl = `https://www.amazon.com/dp/${match[1]}`;
-      const res = await attemptFetch(asinUrl, STRATEGY_UAS[1], 'en-US'); // Try with Facebook bot UA
-      if (res) {
+      try {
+        const res = await attemptFetch(asinUrl, STRATEGY_UAS[1], 'en-US'); // Try with Facebook bot UA
         if (res.title && !title) title = res.title;
         if (res.thumbnail && !isFoodOrUnrelated(res.thumbnail) && !thumbnail) thumbnail = res.thumbnail;
+      } catch (e) {
+        // ASIN fetch failed
       }
     }
   }
 
-  // Strategy 4: OMDB API fallback
-  if (!title || title.toLowerCase().includes('untitled') || !thumbnail) {
+  // Strategy 4: OMDB API fallback (only for streaming platforms)
+  if (matchedPlatform && (!title || title.toLowerCase().includes('untitled') || !thumbnail)) {
     let searchKeyword = cleanTitleForOMDB(title) || extractKeywordFromUrl(url);
     if (searchKeyword && process.env.OMDB_API_KEY) {
       try {

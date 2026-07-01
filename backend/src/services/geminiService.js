@@ -77,37 +77,9 @@ function extractCategoryFromModelText(text) {
   return raw;
 }
 
-async function getImagePart(thumbnailUrl) {
-  if (!thumbnailUrl) return null;
 
-  try {
-    const response = await axios.get(thumbnailUrl, {
-      responseType: 'arraybuffer',
-      timeout: 8000,
-      maxContentLength: 5 * 1024 * 1024,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 CookMarked/1.0',
-        Accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-      },
-    });
 
-    const contentType = String(response.headers['content-type'] || '').split(';')[0];
-    if (!contentType.startsWith('image/')) return null;
-    if (contentType === 'image/svg+xml') return null;
-
-    return {
-      inlineData: {
-        data: Buffer.from(response.data).toString('base64'),
-        mimeType: contentType,
-      },
-    };
-  } catch (err) {
-    console.warn('[gemini] thumbnail analysis skipped', { thumbnailUrl, error: err.message });
-    return null;
-  }
-}
-
-async function categorizeReel({ url, title, description, thumbnailUrl, existingCategories = [], existingCollections }) {
+async function categorizeReel({ url, title, description, existingCategories = [], existingCollections }) {
   const collections = existingCollections || existingCategories || [];
   const collectionList = collections.length > 0
     ? collections.map((name) => `- ${name}`).join('\n')
@@ -119,7 +91,6 @@ You are CookMarked's AI analyzer. Analyze this reel/video metadata and extract u
 Reel title: "${title}"
 Reel/video URL: "${url || ''}"
 Reel caption/description: "${description}"
-Thumbnail image: ${thumbnailUrl ? 'attached' : 'not available'}
 
 Existing user collections:
 ${collectionList}
@@ -149,14 +120,13 @@ Rules:
 `;
 
   try {
-    const imagePart = await getImagePart(thumbnailUrl);
-    const parts = imagePart ? [prompt, imagePart] : [prompt];
+    const parts = [prompt];
     const result = await model.generateContent(parts);
     const category = matchExistingCollection(extractCategoryFromModelText(result.response.text()), collections) || 'Other';
     console.info('[gemini] categorized reel', {
       model: modelName,
       category,
-      usedThumbnail: Boolean(imagePart),
+      textOnly: true
     });
     return category;
   } catch (err) {

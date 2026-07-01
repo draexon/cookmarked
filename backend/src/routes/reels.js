@@ -126,19 +126,10 @@ router.post('/reels', async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Url is required' });
     }
 
-    let scraped = { title: '', description: '', thumbnail: '' };
-    try {
-      scraped = await scrapeMetadata(url);
-    } catch (err) {
+    let scrapedPromise = scrapeMetadata(url).catch(err => {
       console.warn('[reels] metadata scrape failed; using provided values', { url, error: err.message });
-    }
-
-    const title = scraped.title && scraped.title !== 'Untitled'
-      ? scraped.title
-      : providedTitle || null;
-    const description = scraped.description || '';
-    const thumbnail = scraped.thumbnail || providedThumbnail || null;
-    const platform = detectPlatform(url);
+      return { title: '', description: '', thumbnail: '' };
+    });
 
     const existingCollections = db.prepare(`
       SELECT name
@@ -147,23 +138,47 @@ router.post('/reels', async (req, res, next) => {
       ORDER BY datetime(created_at) DESC, id DESC
     `).all(req.user.id).map((row) => row.name);
 
-    const inferredCategory = inferCategoryFromText(title, description, providedTitle);
-    let category = normalizeCategory(providedCategory);
-    try {
-      const aiCategory = normalizeCategory(await categorizeReel({
+    let categoryPromise = null;
+    if (providedTitle) {
+      categoryPromise = categorizeReel({
+        url,
+        title: providedTitle,
+        description: '',
+        existingCollections,
+      }).catch(err => {
+        console.warn('[reels] categorization failed; using provided category', { error: err.message });
+        return 'Other';
+      });
+    }
+
+    const scraped = await scrapedPromise;
+
+    const title = scraped.title && scraped.title !== 'Untitled'
+      ? scraped.title
+      : providedTitle || null;
+    const description = scraped.description || '';
+    const thumbnail = scraped.thumbnail || providedThumbnail || null;
+    const platform = detectPlatform(url);
+
+    if (!categoryPromise) {
+      categoryPromise = categorizeReel({
         url,
         title: title || providedTitle || 'Untitled',
         description,
-        thumbnailUrl: thumbnail,
         existingCollections,
-      }));
-      category = !isOtherCategory(aiCategory)
-        ? aiCategory
-        : inferredCategory || category;
-    } catch (err) {
-      console.warn('[reels] categorization failed; using provided category', { error: err.message });
-      category = inferredCategory || category;
+      }).catch(err => {
+        console.warn('[reels] categorization failed; using provided category', { error: err.message });
+        return 'Other';
+      });
     }
+
+    const inferredCategory = inferCategoryFromText(title, description, providedTitle);
+    let category = normalizeCategory(providedCategory);
+    
+    const aiCategory = normalizeCategory(await categoryPromise);
+    category = !isOtherCategory(aiCategory)
+      ? aiCategory
+      : inferredCategory || category;
 
     if (collectionId) {
       const collection = db.prepare('SELECT id, name FROM collections WHERE id = ? AND user_id = ?')
